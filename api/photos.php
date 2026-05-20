@@ -12,14 +12,7 @@ if ($method === 'GET') {
         'SELECT id, path, thumb_path, large_path, caption, taken_at, gps_lat, gps_lng,
                 width, height, sort_order
          FROM photos WHERE trip_id = ?
-         ORDER BY COALESCE(taken_at, created_at) ASC, sort_order ASC, id ASC'
-    );
-    // created_at gibt es nicht in photos — Workaround: nur taken_at sortieren
-    $stmt = $db->prepare(
-        'SELECT id, path, thumb_path, large_path, caption, taken_at, gps_lat, gps_lng,
-                width, height, sort_order
-         FROM photos WHERE trip_id = ?
-         ORDER BY COALESCE(taken_at, "1970-01-01") ASC, sort_order ASC, id ASC'
+         ORDER BY sort_order ASC, id ASC'
     );
     $stmt->execute([$tripId]);
     Response::json($stmt->fetchAll());

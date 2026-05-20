@@ -24,6 +24,10 @@ export default function MapScreen({ go }) {
     mapRef.current = map;
     L.tileLayer(OSM, { attribution: '© OpenStreetMap', maxZoom: 18 }).addTo(map);
     map.setView([51.3, 9.5], 6);
+    // Container-Größe nach Mount neu berechnen
+    setTimeout(() => map.invalidateSize(), 50);
+    setTimeout(() => map.invalidateSize(), 300);
+    return () => { map.remove(); mapRef.current = null; };
   }, []);
 
   useEffect(() => {
@@ -56,8 +60,8 @@ export default function MapScreen({ go }) {
   if (!trips) return <Loading />;
 
   return (
-    <div className="h-[calc(100vh-160px)] lg:h-[calc(100vh-100px)] flex flex-col -m-4 lg:-m-8">
-      <div className="filter-bar p-3 lg:p-4 bg-bg-2 border-b border-border m-0">
+    <div>
+      <div className="filter-bar mb-3">
         {['', 'river', 'lake', 'cave', 'portage'].map(t => (
           <button key={t} className={'filter-chip ' + (filterType === t ? 'active' : '')} onClick={() => setFilterType(t)}>
             {t === '' ? 'Alle' : (
@@ -69,7 +73,11 @@ export default function MapScreen({ go }) {
           </button>
         ))}
       </div>
-      <div ref={mapEl} className="flex-1" />
+      <div
+        ref={mapEl}
+        className="rounded-xl overflow-hidden border border-border"
+        style={{ height: 'min(75vh, 700px)', minHeight: 400 }}
+      />
     </div>
   );
 }
