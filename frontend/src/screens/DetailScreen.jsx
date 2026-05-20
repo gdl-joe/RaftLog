@@ -3,6 +3,7 @@ import { api, uploadPhotosParallel } from '../api.js';
 import { Chip, DiffBars, Rating, Loading, formatDate, formatDuration, tripTypeLabel } from '../atoms.jsx';
 import { Icon, TripTypeIcon } from '../icons.jsx';
 import MapyMap from '../components/MapyMap.jsx';
+import MapPicker from '../components/MapPicker.jsx';
 import PhotoLightbox from '../components/PhotoLightbox.jsx';
 
 const TABS = [
@@ -101,7 +102,7 @@ export default function DetailScreen({ id, go, user }) {
       </nav>
 
       {tab === 'info'   && <TabInfo trip={trip} />}
-      {tab === 'map'    && <TabMap trip={trip} tracks={tracks} onUploadGpx={onUploadGpx} isAdmin={isAdmin} />}
+      {tab === 'map'    && <TabMap trip={trip} tracks={tracks} onUploadGpx={onUploadGpx} isAdmin={isAdmin} onUpdateTrip={setTrip} />}
       {tab === 'photos' && <TabPhotos photos={photos} onOpen={setLightbox} onUpload={onUpload} uploading={uploading} isAdmin={isAdmin} fileRef={fileRef} />}
       {tab === 'team'   && <TabTeam trip={trip} />}
 
@@ -161,28 +162,100 @@ function TabInfo({ trip }) {
   );
 }
 
-function TabMap({ trip, tracks, onUploadGpx, isAdmin }) {
+function TabMap({ trip, tracks, onUploadGpx, isAdmin, onUpdateTrip }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState({
+    start_lat: trip.put_in_lat,    start_lng: trip.put_in_lng,
+    end_lat:   trip.take_out_lat,  end_lng:   trip.take_out_lng,
+  });
+  const [saving, setSaving] = useState(false);
+
+  // Wenn Trip neu lädt, draft synchronisieren
+  useEffect(() => {
+    setDraft({
+      start_lat: trip.put_in_lat,    start_lng: trip.put_in_lng,
+      end_lat:   trip.take_out_lat,  end_lng:   trip.take_out_lng,
+    });
+  }, [trip.id, trip.put_in_lat, trip.put_in_lng, trip.take_out_lat, trip.take_out_lng]);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const payload = {
+        put_in_lat:   draft.start_lat ?? null,
+        put_in_lng:   draft.start_lng ?? null,
+        take_out_lat: draft.end_lat   ?? null,
+        take_out_lng: draft.end_lng   ?? null,
+      };
+      const updated = await api.updateTrip(trip.id, payload);
+      onUpdateTrip(updated);
+      setEditing(false);
+    } catch (e) {
+      alert('Fehler beim Speichern: ' + e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function cancel() {
+    setDraft({
+      start_lat: trip.put_in_lat,    start_lng: trip.put_in_lng,
+      end_lat:   trip.take_out_lat,  end_lng:   trip.take_out_lng,
+    });
+    setEditing(false);
+  }
+
   if (!tracks) return <Loading label="Lade Track…" />;
+
+  const hasPoints = trip.put_in_lat != null || trip.take_out_lat != null;
+  const hasTrack  = tracks.length > 0;
+
   return (
     <div>
-      <div className="rounded-xl overflow-hidden border border-border" style={{ height: 'min(60vh, 520px)' }}>
-        <MapyMap trip={trip} tracks={tracks} />
-      </div>
-      <div className="flex items-center justify-between mt-4 gap-3 flex-wrap">
-        <div className="text-sm text-text-dim mono">
-          {tracks.length > 0 ? (
-            <>
-              {tracks.reduce((s, t) => s + Number(t.distance_km || 0), 0).toFixed(1)} km · {tracks.reduce((s, t) => s + (t.point_count || 0), 0)} Punkte
-            </>
-          ) : 'Kein Track hinterlegt'}
-        </div>
-        {isAdmin && (
-          <label className="btn btn-secondary cursor-pointer">
-            <Icon.Upload size={16} /> GPX hochladen
-            <input type="file" accept=".gpx,application/gpx+xml" hidden onChange={onUploadGpx} />
-          </label>
-        )}
-      </div>
+      {editing ? (
+        <>
+          <MapPicker mode="start_end" value={draft} onChange={setDraft} />
+          <div className="flex items-center justify-between mt-3 gap-3 flex-wrap">
+            <div className="text-xs text-text-dim">
+              Klick auf die Karte setzt Ein- und Ausstieg. Marker können gezogen werden.
+            </div>
+            <div className="flex gap-2">
+              <button className="btn btn-secondary" onClick={cancel} disabled={saving}>Abbrechen</button>
+              <button className="btn btn-primary" onClick={save} disabled={saving}>
+                {saving ? <span className="spinner" /> : <><Icon.Check size={16} /> Speichern</>}
+              </button>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="rounded-xl overflow-hidden border border-border" style={{ height: 'min(60vh, 520px)' }}>
+            <MapyMap trip={trip} tracks={tracks} />
+          </div>
+          <div className="flex items-center justify-between mt-4 gap-3 flex-wrap">
+            <div className="text-sm text-text-dim mono">
+              {hasTrack ? (
+                <>{tracks.reduce((s, t) => s + Number(t.distance_km || 0), 0).toFixed(1)} km · {tracks.reduce((s, t) => s + (t.point_count || 0), 0)} Punkte</>
+              ) : hasPoints ? (
+                'Ein-/Ausstieg gesetzt — kein Track'
+              ) : (
+                'Keine Karten-Daten — auf "Punkte setzen" klicken'
+              )}
+            </div>
+            {isAdmin && (
+              <div className="flex gap-2 flex-wrap">
+                <button className="btn btn-secondary" onClick={() => setEditing(true)}>
+                  <Icon.Pin size={16} /> {hasPoints ? 'Punkte ändern' : 'Punkte setzen'}
+                </button>
+                <label className="btn btn-secondary cursor-pointer">
+                  <Icon.Upload size={16} /> GPX hochladen
+                  <input type="file" accept=".gpx,application/gpx+xml" hidden onChange={onUploadGpx} />
+                </label>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
