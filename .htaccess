@@ -1,0 +1,59 @@
+# RaftLog — Root .htaccess (all-inkl-tauglich)
+
+# Wenn auf einem Verzeichnis gelandet → public/index.html ausliefern
+DirectoryIndex public/index.html
+
+RewriteEngine On
+
+# Root-URL "/" explizit auf das gebaute Frontend mappen
+RewriteRule ^$ public/index.html [L]
+
+# HTTPS-Redirect — sobald SSL-Cert da ist, einkommentieren
+# RewriteCond %{HTTPS} !=on
+# RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Sensible Ordner sperren (geht auch in .htaccess via RewriteRule)
+RewriteRule ^(config|lib|database|frontend|mockups|node_modules)(/.*)?$ - [F,L]
+
+# API-Routing — [END] verhindert, dass die Rewrite-Engine erneut durchläuft
+RewriteRule ^api/(.*)$ api/index.php [QSA,END]
+
+# Frontend-Assets aus /public/ durchreichen
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteCond %{REQUEST_URI} !^/uploads/
+RewriteCond %{REQUEST_URI} !^/setup/
+RewriteCond %{REQUEST_URI} !^/public/
+RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f
+RewriteRule ^(.+)$ public/$1 [L]
+
+# SPA-Fallback
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteCond %{REQUEST_URI} !^/uploads/
+RewriteCond %{REQUEST_URI} !^/setup/
+RewriteRule ^ public/index.html [L]
+
+# Sensible Dateien
+<FilesMatch "\.(env|md|sql|lock)$">
+    Require all denied
+</FilesMatch>
+<FilesMatch "config\.example\.php$">
+    Require all denied
+</FilesMatch>
+
+# Caching
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/png  "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType text/css   "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>

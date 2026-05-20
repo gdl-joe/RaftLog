@@ -1,0 +1,14 @@
+# Keine PHP-Ausführung in Uploads-Ordnern
+<FilesMatch "\.(php|phtml|phar|cgi|pl|py|sh)$">
+    Require all denied
+</FilesMatch>
+
+# Direktes Listing verbieten
+Options -Indexes
+
+# Caching für Bilder
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpeg "access plus 6 months"
+    ExpiresByType image/png  "access plus 6 months"
+</IfModule>

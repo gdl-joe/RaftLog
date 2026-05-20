@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RaftLog Mockup — Fotos</title>
+<link rel="stylesheet" href="_tokens.css">
+<link rel="stylesheet" href="_shell.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  (function() {
+    var p = new URLSearchParams(location.search);
+    document.documentElement.setAttribute('data-theme', p.get('theme') || 'dark');
+  })();
+</script>
+<style>
+  .hero-strip {
+    margin: -16px -16px 18px;
+    height: 160px;
+    background-image: linear-gradient(135deg,#0d3b66 0%,#14b8a6 60%,#90cdf4 100%);
+    position: relative;
+  }
+  .hero-strip::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(14,24,32,.92) 0%, rgba(14,24,32,.3) 50%, transparent 100%);
+  }
+  .hero-strip .hero-info {
+    position: absolute;
+    bottom: 14px; left: 18px; right: 18px;
+    z-index: 1;
+    color: #fff;
+  }
+  .hero-strip h1 { margin: 4px 0 0; font-size: 1.4rem; text-shadow: 0 2px 8px rgba(0,0,0,.4); }
+  @media (min-width: 1024px) {
+    .hero-strip { margin: -28px -32px 24px; height: 200px; }
+  }
+
+  .tab-bar {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--c-border);
+    margin: 0 0 22px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab {
+    background: transparent; border: none;
+    color: var(--c-text-dim);
+    font: 600 0.9rem var(--font-sans);
+    padding: 14px 18px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .tab.active { color: var(--c-water); border-bottom-color: var(--c-water); }
+  .tab:hover:not(.active) { color: var(--c-text); }
+
+  /* ─── Foto-Galerie ─── */
+  .photos-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .photos-head .count {
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+  .photos-head .count .num { color: var(--c-water); }
+  .photos-head .sub {
+    color: var(--c-text-dim);
+    font-size: 0.84rem;
+    margin-top: 2px;
+  }
+  .upload-btn {
+    background: var(--c-water);
+    color: #fff;
+    border: none;
+    font: 600 0.9rem var(--font-sans);
+    border-radius: 10px;
+    padding: 10px 16px;
+    min-height: 42px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all .2s ease;
+  }
+  .upload-btn:hover {
+    background: var(--c-water-light);
+    transform: translateY(-1px);
+  }
+
+  .view-toggle {
+    display: inline-flex;
+    background: var(--c-bg-3);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .view-toggle button {
+    background: transparent;
+    border: none;
+    color: var(--c-text-dim);
+    font: 500 0.8rem var(--font-sans);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .view-toggle button.active {
+    background: var(--c-water);
+    color: #fff;
+  }
+
+  .photo-filter {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .pchip {
+    background: transparent;
+    border: 1px solid var(--c-border);
+    color: var(--c-text-dim);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .pchip.active {
+    background: var(--c-water-glow);
+    color: var(--c-water);
+    border-color: var(--c-water);
+  }
+
+  /* Grid 2-Spalten mobil, 3 ab 700, 4 ab 1024, 5 ab 1400 */
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+  @media (min-width: 480px) { .photo-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; } }
+  @media (min-width: 1024px) { .photo-grid { grid-template-columns: repeat(4, 1fr); gap: 10px; } }
+  @media (min-width: 1400px) { .photo-grid { grid-template-columns: repeat(5, 1fr); gap: 12px; } }
+
+  .photo {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    background-size: cover;
+    background-position: center;
+    transition: transform .2s ease;
+    border: 1px solid transparent;
+  }
+  .photo:hover { transform: scale(1.02); border-color: var(--c-water); }
+  .photo::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+  .photo:hover::after { opacity: 1; }
+
+  .photo .badge {
+    position: absolute;
+    top: 8px; right: 8px;
+    background: rgba(14,24,32,.7);
+    backdrop-filter: blur(8px);
+    color: #fff;
+    border-radius: 6px;
+    padding: 3px 6px;
+    font-size: 0.7rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .photo .badge.gps { color: var(--c-water-light); }
+  .photo .caption {
+    position: absolute;
+    bottom: 8px; left: 8px; right: 8px;
+    color: #fff;
+    font-size: 0.78rem;
+    opacity: 0;
+    z-index: 1;
+    transition: opacity .2s ease;
+    text-shadow: 0 1px 3px rgba(0,0,0,.7);
+  }
+  .photo:hover .caption { opacity: 1; }
+
+  /* Upload-Tile (Admin) */
+  .photo.upload {
+    background: var(--c-bg-2);
+    border: 2px dashed var(--c-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+    color: var(--c-text-dim);
+  }
+  .photo.upload:hover {
+    border-color: var(--c-water);
+    color: var(--c-water);
+    background: var(--c-water-glow);
+  }
+  .photo.upload .upload-label {
+    font-size: 0.78rem;
+    font-weight: 500;
+  }
+
+  /* Day-Section */
+  .day-section { margin-bottom: 32px; }
+  .day-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 0 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--c-border);
+  }
+  .day-head h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--c-text);
+    font-family: var(--font-mono);
+  }
+  .day-head .count {
+    font-size: 0.78rem;
+    color: var(--c-text-dim);
+    font-family: var(--font-mono);
+  }
+</style>
+</head>
+<body>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 12 12 3l9 9"/><path d="M5 10v10h14V10"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2Z"/><path d="M9 4v16M15 6v16"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-waves" viewBox="0 0 24 24"><path d="M2 6c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/><path d="M2 12c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/><path d="M2 18c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></symbol>
+  <symbol id="i-river" viewBox="0 0 24 24"><path d="M2 16c3 0 3-3 6-3s3 3 6 3 3-3 6-3 2 2 2 2"/><path d="M2 9c3 0 3-3 6-3s3 3 6 3 3-3 6-3 2 2 2 2"/></symbol>
+  <symbol id="i-stats" viewBox="0 0 24 24"><path d="M3 21V3"/><path d="M21 21H3"/><path d="M7 17v-5M12 17V9M17 17v-8"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="4"/></symbol>
+  <symbol id="i-team" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><path d="M14 20c0-2 2-4 5-4"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v.01M11 12h1v5h1"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 22s7-7 7-12a7 7 0 0 0-14 0c0 5 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 4v12M8 8l4-4 4 4"/><path d="M4 18h16"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M20 12c0-.4 0-.8-.1-1.2l2-1.5-2-3.4-2.3.8a7 7 0 0 0-2.1-1.2L15 3h-4l-.5 2.5a7 7 0 0 0-2.1 1.2l-2.3-.8-2 3.4 2 1.5A7 7 0 0 0 6 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.8c.6.5 1.3.9 2.1 1.2L11 21h4l.5-2.5c.8-.3 1.5-.7 2.1-1.2l2.3.8 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></symbol>
+</svg>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-mark"><svg class="icon icon-sm"><use href="#i-waves"/></svg></span>
+      <span>RaftLog</span>
+    </div>
+    <a class="side-item active"><svg class="icon"><use href="#i-home"/></svg><span>Feed</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-map"/></svg><span>Karte</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-waves"/></svg><span>Gewässer</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-stats"/></svg><span>Statistik</span></a>
+    <a class="side-item fab"><svg class="icon"><use href="#i-plus"/></svg><span>Neue Befahrung</span></a>
+    <div class="sidebar-section">Konto</div>
+    <a class="side-item"><svg class="icon"><use href="#i-user"/></svg><span>Profil</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-settings"/></svg><span>Einstellungen</span></a>
+  </aside>
+
+  <header class="app-header">
+    <button class="header-btn" aria-label="Zurück"><svg class="icon"><use href="#i-back"/></svg></button>
+    <div class="app-title"><span style="font-weight:600;font-size:.95rem">Aller-Etappe Verden → Achim</span></div>
+    <div class="spacer-x"></div>
+    <button class="header-btn"><svg class="icon"><use href="#i-more"/></svg></button>
+  </header>
+
+  <main class="app-main">
+
+    <div class="hero-strip">
+      <div class="hero-info">
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="chip solid" data-type="river"><svg class="icon icon-sm"><use href="#i-river"/></svg>Fluss</span>
+          <span style="opacity:.85;font-size:.85rem;font-family:var(--font-mono)">12.04.2026</span>
+        </div>
+        <h1>Aller-Etappe Verden → Achim</h1>
+      </div>
+    </div>
+
+    <nav class="tab-bar">
+      <button class="tab"><svg class="icon icon-sm"><use href="#i-info"/></svg>Übersicht</button>
+      <button class="tab"><svg class="icon icon-sm"><use href="#i-map"/></svg>Karte & Track</button>
+      <button class="tab active"><svg class="icon icon-sm"><use href="#i-camera"/></svg>Fotos · 24</button>
+      <button class="tab"><svg class="icon icon-sm"><use href="#i-team"/></svg>Team</button>
+    </nav>
+
+    <div class="photos-head">
+      <div>
+        <div class="count"><span class="num">24</span> Fotos</div>
+        <div class="sub">12. April 2026 · 18 mit GPS-Position</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div class="view-toggle">
+          <button class="active" title="Grid"><svg class="icon icon-sm"><use href="#i-grid"/></svg></button>
+          <button title="Nach Tag"><svg class="icon icon-sm"><use href="#i-list"/></svg> Nach Tag</button>
+        </div>
+        <button class="upload-btn"><svg class="icon icon-sm"><use href="#i-upload"/></svg> Fotos hochladen</button>
+      </div>
+    </div>
+
+    <div class="photo-filter">
+      <button class="pchip active">Alle · 24</button>
+      <button class="pchip"><svg class="icon icon-sm" style="vertical-align:-2px"><use href="#i-pin"/></svg> Mit GPS · 18</button>
+      <button class="pchip">Markiert · 5</button>
+      <button class="pchip">Im Wasser · 12</button>
+      <button class="pchip">Am Ufer · 8</button>
+      <button class="pchip">Team · 4</button>
+    </div>
+
+    <div class="photo-grid">
+
+      <div class="photo upload">
+        <svg class="icon icon-lg"><use href="#i-upload"/></svg>
+        <div class="upload-label">Hochladen</div>
+        <div style="font-size:.68rem;opacity:.7">JPG · HEIC · PNG</div>
+      </div>
+
+      <div class="photo" style="background-image:linear-gradient(135deg,#0d3b66,#14b8a6 70%,#5eead4)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+        <div class="caption">Einstieg Verden, 09:15</div>
+      </div>
+      <div class="photo" style="background-image:linear-gradient(160deg,#1e3a8a,#3b82f6 60%,#93c5fd)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+      </div>
+      <div class="photo" style="background-image:linear-gradient(135deg,#14532d,#22c55e 60%,#bbf7d0)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+        <div class="caption">Buhnen-Schwelle km 6</div>
+      </div>
+      <div class="photo" style="background-image:linear-gradient(160deg,#7c2d12,#ea580c 70%,#fed7aa)"></div>
+      <div class="photo" style="background-image:linear-gradient(135deg,#1e293b,#475569 50%,#cbd5e1)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+      </div>
+
+      <div class="photo" style="background-image:linear-gradient(160deg,#0c4a6e,#0891b2 70%,#7dd3fc)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+        <div class="caption">Kehrwasser</div>
+      </div>
+      <div class="photo" style="background-image:linear-gradient(135deg,#581c87,#a855f7 60%,#d8b4fe)"></div>
+      <div class="photo" style="background-image:linear-gradient(135deg,#365314,#84cc16 60%,#bef264)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+      </div>
+      <div class="photo" style="background-image:linear-gradient(135deg,#0e1820,#14b8a6 60%,#a7f3d0)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+        <div class="caption">Mareike im Schwall</div>
+      </div>
+      <div class="photo" style="background-image:linear-gradient(160deg,#451a03,#b8823a 70%,#fde68a)"></div>
+      <div class="photo" style="background-image:linear-gradient(135deg,#7c2d12,#dc2626 60%,#fca5a5)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+      </div>
+
+      <div class="photo" style="background-image:linear-gradient(135deg,#164e63,#06b6d4 70%,#67e8f9)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+        <div class="caption">Pause km 12</div>
+      </div>
+      <div class="photo" style="background-image:linear-gradient(135deg,#0f172a,#1e293b 60%,#475569)"></div>
+      <div class="photo" style="background-image:linear-gradient(160deg,#1e3a8a,#6366f1 60%,#a5b4fc)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+      </div>
+      <div class="photo" style="background-image:linear-gradient(135deg,#5b1f00,#ea580c 70%,#fde68a)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+      </div>
+      <div class="photo" style="background-image:linear-gradient(135deg,#0c4a6e,#14b8a6 50%,#ccfbf1)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+        <div class="caption">Team-Foto Achim</div>
+      </div>
+      <div class="photo" style="background-image:linear-gradient(160deg,#1c1917,#78716c 60%,#d6d3d1)"></div>
+
+      <div class="photo" style="background-image:linear-gradient(135deg,#1a3d1a,#588055 50%,#84cc16)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+      </div>
+      <div class="photo" style="background-image:linear-gradient(160deg,#0d3b66,#14b8a6 70%,#5eead4)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+        <div class="caption">Ausstieg Achim, 12:35</div>
+      </div>
+      <div class="photo" style="background-image:linear-gradient(135deg,#52525b,#a1a1aa 60%,#e4e4e7)"></div>
+      <div class="photo" style="background-image:linear-gradient(160deg,#365314,#84cc16 60%,#d9f99d)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+      </div>
+      <div class="photo" style="background-image:linear-gradient(135deg,#7e22ce,#a855f7 70%,#e9d5ff)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+      </div>
+      <div class="photo" style="background-image:linear-gradient(160deg,#0f172a,#3b82f6 60%,#bae6fd)">
+        <span class="badge gps"><svg class="icon icon-sm" style="width:12px;height:12px"><use href="#i-pin"/></svg>GPS</span>
+        <div class="caption">Sonnenuntergang</div>
+      </div>
+      <div class="photo" style="background-image:linear-gradient(135deg,#1e1b4b,#4338ca 70%,#a5b4fc)"></div>
+
+    </div>
+
+    <p style="text-align:center;color:var(--c-text-dim);font-size:.84rem;margin-top:32px">
+      Tippe ein Foto an für Vollbild · Drag &amp; Drop in den Upload-Tile zum schnellen Hinzufügen
+    </p>
+
+  </main>
+
+  <nav class="bottom-nav">
+    <div class="nav-item active"><svg class="icon"><use href="#i-home"/></svg><span class="lbl">Feed</span></div>
+    <div class="nav-item"><svg class="icon"><use href="#i-map"/></svg><span class="lbl">Karte</span></div>
+    <div class="nav-item fab"><div class="fab-circle"><svg class="icon"><use href="#i-plus"/></svg></div><span class="lbl">Neu</span></div>
+    <div class="nav-item"><svg class="icon"><use href="#i-waves"/></svg><span class="lbl">Gewässer</span></div>
+    <div class="nav-item"><svg class="icon"><use href="#i-user"/></svg><span class="lbl">Profil</span></div>
+  </nav>
+
+</div>
+
+</body>
+</html>

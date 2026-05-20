@@ -1,0 +1,29 @@
+# Secrets — niemals committen
+config/config.php
+.env
+
+# OS
+.DS_Store
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Build-Artefakte (kommen aus `npm run build`)
+public/assets/
+public/index.html
+public/sw.js
+public/registerSW.js
+public/workbox-*.js
+public/manifest.webmanifest
+
+# User-Uploads
+uploads/trips/*
+uploads/tracks/*
+!uploads/.gitkeep
+!uploads/trips/.gitkeep
+!uploads/tracks/.gitkeep
+
+# Logs
+*.log

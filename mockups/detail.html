@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RaftLog Mockup — Detail</title>
+<link rel="stylesheet" href="_tokens.css">
+<link rel="stylesheet" href="_shell.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  (function() {
+    var p = new URLSearchParams(location.search);
+    document.documentElement.setAttribute('data-theme', p.get('theme') || 'dark');
+  })();
+</script>
+<style>
+  .hero-wrap {
+    position: relative;
+    margin: -16px -16px 0;
+    aspect-ratio: 16/9;
+    background-image: linear-gradient(135deg,#0d3b66 0%,#14b8a6 60%,#90cdf4 100%);
+    background-size: cover;
+    background-position: center;
+  }
+  .hero-wrap::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(14,24,32,.95) 0%, rgba(14,24,32,.3) 40%, transparent 70%);
+  }
+  .hero-info {
+    position: absolute;
+    bottom: 18px; left: 18px; right: 18px;
+    z-index: 1;
+  }
+  .hero-info .chips { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  .hero-info h1 {
+    margin: 0;
+    font-size: 1.55rem;
+    color: #fff;
+    line-height: 1.2;
+    text-shadow: 0 2px 8px rgba(0,0,0,.4);
+  }
+  .hero-info .water-name {
+    color: rgba(255,255,255,.85);
+    font-size: 0.95rem;
+    margin-top: 2px;
+    font-family: var(--font-mono);
+    text-shadow: 0 1px 4px rgba(0,0,0,.5);
+  }
+  @media (min-width: 1024px) {
+    .hero-wrap { margin: -28px -32px 0; border-radius: 0; }
+    .hero-info h1 { font-size: 2rem; }
+  }
+
+  .tab-bar {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--c-border);
+    margin: 20px 0 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab {
+    background: transparent;
+    border: none;
+    color: var(--c-text-dim);
+    font: 600 0.9rem var(--font-sans);
+    padding: 14px 18px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tab.active {
+    color: var(--c-water);
+    border-bottom-color: var(--c-water);
+  }
+  .tab:hover:not(.active) { color: var(--c-text); }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding-top: 24px;
+  }
+  @media (min-width: 768px) {
+    .detail-grid { grid-template-columns: 1.4fr 1fr; gap: 32px; }
+  }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .stat-tile {
+    background: var(--c-bg-2);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .stat-tile .label {
+    font-size: 0.7rem;
+    color: var(--c-text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+  .stat-tile .value {
+    font-family: var(--font-mono);
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--c-text);
+  }
+  .stat-tile .value.water { color: var(--c-water); }
+  .stat-tile .sub { font-size: 0.78rem; color: var(--c-text-dim); margin-top: 2px; }
+
+  .map-preview {
+    aspect-ratio: 1/1;
+    background:
+      radial-gradient(circle at 60% 40%, rgba(20,184,166,.15) 0%, transparent 70%),
+      repeating-linear-gradient(45deg, var(--c-bg-2) 0 30px, var(--c-bg-3) 30px 31px);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    position: relative;
+    overflow: hidden;
+  }
+  .map-preview svg.track {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+  }
+  .map-pin {
+    position: absolute;
+    color: var(--c-sand);
+    transform: translate(-50%, -100%);
+  }
+  .map-pin.start { top: 22%; left: 28%; color: var(--c-success); }
+  .map-pin.end   { top: 70%; left: 80%; color: var(--c-danger); }
+  .map-overlay-label {
+    position: absolute;
+    bottom: 12px; left: 12px;
+    background: rgba(14,24,32,.85);
+    backdrop-filter: blur(8px);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    color: var(--c-text);
+    font-family: var(--font-mono);
+  }
+
+  h2.section { font-size: 1rem; margin: 28px 0 12px; }
+  .field-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--c-border);
+    font-size: 0.92rem;
+  }
+  .field-row .k { color: var(--c-text-dim); }
+  .field-row .v { color: var(--c-text); font-family: var(--font-mono); }
+
+  .notes-card {
+    background: var(--c-bg-2);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    font-size: 0.92rem;
+    line-height: 1.6;
+    color: var(--c-text);
+  }
+
+  .gear-tags {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .gear-tag {
+    background: var(--c-bg-3);
+    color: var(--c-text-dim);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+  }
+</style>
+</head>
+<body>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 12 12 3l9 9"/><path d="M5 10v10h14V10"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2Z"/><path d="M9 4v16M15 6v16"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-waves" viewBox="0 0 24 24"><path d="M2 6c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/><path d="M2 12c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/><path d="M2 18c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></symbol>
+  <symbol id="i-river" viewBox="0 0 24 24"><path d="M2 16c3 0 3-3 6-3s3 3 6 3 3-3 6-3 2 2 2 2"/><path d="M2 9c3 0 3-3 6-3s3 3 6 3 3-3 6-3 2 2 2 2"/></symbol>
+  <symbol id="i-lake" viewBox="0 0 24 24"><ellipse cx="12" cy="14" rx="9" ry="5"/><path d="M5 11c2-3 5-4 7-4s5 1 7 4"/></symbol>
+  <symbol id="i-cave" viewBox="0 0 24 24"><path d="M3 21V11a9 9 0 0 1 18 0v10"/><path d="M9 21v-5a3 3 0 0 1 6 0v5"/></symbol>
+  <symbol id="i-portage" viewBox="0 0 24 24"><path d="M3 20h18"/><path d="m7 20 5-12 5 12"/><circle cx="12" cy="5" r="2"/></symbol>
+  <symbol id="i-stats" viewBox="0 0 24 24"><path d="M3 21V3"/><path d="M21 21H3"/><path d="M7 17v-5M12 17V9M17 17v-8"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="4"/></symbol>
+  <symbol id="i-team" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><path d="M14 20c0-2 2-4 5-4"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v.01M11 12h1v5h1"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 22s7-7 7-12a7 7 0 0 0-14 0c0 5 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M20 12c0-.4 0-.8-.1-1.2l2-1.5-2-3.4-2.3.8a7 7 0 0 0-2.1-1.2L15 3h-4l-.5 2.5a7 7 0 0 0-2.1 1.2l-2.3-.8-2 3.4 2 1.5A7 7 0 0 0 6 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.8c.6.5 1.3.9 2.1 1.2L11 21h4l.5-2.5c.8-.3 1.5-.7 2.1-1.2l2.3.8 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z"/></symbol>
+</svg>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-mark"><svg class="icon icon-sm"><use href="#i-waves"/></svg></span>
+      <span>RaftLog</span>
+    </div>
+    <a class="side-item active"><svg class="icon"><use href="#i-home"/></svg><span>Feed</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-map"/></svg><span>Karte</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-waves"/></svg><span>Gewässer</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-stats"/></svg><span>Statistik</span></a>
+    <a class="side-item fab"><svg class="icon"><use href="#i-plus"/></svg><span>Neue Befahrung</span></a>
+    <div class="sidebar-section">Konto</div>
+    <a class="side-item"><svg class="icon"><use href="#i-user"/></svg><span>Profil</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-settings"/></svg><span>Einstellungen</span></a>
+  </aside>
+
+  <header class="app-header">
+    <button class="header-btn" aria-label="Zurück"><svg class="icon"><use href="#i-back"/></svg></button>
+    <div class="app-title"><span style="font-weight:600;font-size:.95rem">Aller-Etappe Verden → Achim</span></div>
+    <div class="spacer-x"></div>
+    <button class="header-btn" aria-label="Mehr"><svg class="icon"><use href="#i-more"/></svg></button>
+  </header>
+
+  <main class="app-main">
+
+    <div class="hero-wrap">
+      <div class="hero-info">
+        <div class="chips">
+          <span class="chip solid" data-type="river"><svg class="icon icon-sm"><use href="#i-river"/></svg>Fluss</span>
+          <span class="chip" data-type="river" style="background:rgba(20,184,166,.3);color:#fff;border-color:rgba(255,255,255,.4)">WW III</span>
+        </div>
+        <h1>Aller-Etappe Verden → Achim</h1>
+        <div class="water-name">Aller · 12. April 2026</div>
+      </div>
+    </div>
+
+    <nav class="tab-bar">
+      <button class="tab active"><svg class="icon icon-sm"><use href="#i-info"/></svg>Übersicht</button>
+      <button class="tab"><svg class="icon icon-sm"><use href="#i-map"/></svg>Karte & Track</button>
+      <button class="tab"><svg class="icon icon-sm"><use href="#i-camera"/></svg>Fotos · 8</button>
+      <button class="tab"><svg class="icon icon-sm"><use href="#i-team"/></svg>Team</button>
+    </nav>
+
+    <div class="detail-grid">
+
+      <!-- LINKS: Karte + Notizen -->
+      <div>
+        <h2 class="section">Strecke</h2>
+        <div class="map-preview">
+          <svg class="track" viewBox="0 0 400 400" preserveAspectRatio="none">
+            <path d="M 110 88 Q 160 130 130 200 T 220 280 Q 280 290 320 280"
+                  stroke="#14b8a6" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"
+                  stroke-dasharray="0" filter="url(#glow)" />
+            <defs>
+              <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+          </svg>
+          <svg class="map-pin start" style="width:28px;height:28px"><use href="#i-pin"/></svg>
+          <svg class="map-pin end" style="width:28px;height:28px"><use href="#i-pin"/></svg>
+          <div class="map-overlay-label">18.4 km · ↑ 12 m · ↓ 14 m</div>
+        </div>
+
+        <h2 class="section">Notizen</h2>
+        <div class="notes-card">
+          Bei niedrigem Wasserstand (Pegel Verden: 120 cm) schöner, kraftvoller
+          Schwellenabschnitt nach km 6. Sehr saubere Linie zwischen den Buhnen,
+          gute Kehrwasser zum Sammeln. Nach km 12 wird die Strömung gemächlicher,
+          ideal zum Trinken und Schauen. Achim erreicht 12:35 — sauberer Ausstieg
+          an der Slipanlage.
+        </div>
+
+        <h2 class="section">Wetter</h2>
+        <div class="field-row"><span class="k">Bedingungen</span><span class="v">Bedeckt, 14 °C</span></div>
+        <div class="field-row"><span class="k">Wind</span><span class="v">SW 3–4 Bft</span></div>
+        <div class="field-row"><span class="k">Pegel Verden</span><span class="v">120 cm</span></div>
+
+        <h2 class="section" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Fotos · 24</span>
+          <a style="font-size:.78rem;color:var(--c-water);font-weight:500;cursor:pointer">Alle anzeigen →</a>
+        </h2>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+          <div style="aspect-ratio:1/1;border-radius:8px;background-image:linear-gradient(135deg,#0d3b66,#14b8a6 70%,#5eead4);background-size:cover;cursor:pointer"></div>
+          <div style="aspect-ratio:1/1;border-radius:8px;background-image:linear-gradient(160deg,#1e3a8a,#3b82f6 60%,#93c5fd);background-size:cover"></div>
+          <div style="aspect-ratio:1/1;border-radius:8px;background-image:linear-gradient(135deg,#14532d,#22c55e 60%,#bbf7d0);background-size:cover"></div>
+          <div style="aspect-ratio:1/1;border-radius:8px;background-image:linear-gradient(135deg,#0c4a6e,#0891b2 70%,#7dd3fc);background-size:cover;position:relative">
+            <div style="position:absolute;inset:0;background:rgba(14,24,32,.7);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-family:var(--font-mono);font-size:1.1rem">+20</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RECHTS: Stats + Daten + Team + Gear -->
+      <div>
+        <h2 class="section" style="margin-top:0">Eckdaten</h2>
+        <div class="stat-row">
+          <div class="stat-tile">
+            <div class="label">Strecke</div>
+            <div class="value water">18.4</div>
+            <div class="sub">Kilometer</div>
+          </div>
+          <div class="stat-tile">
+            <div class="label">Dauer</div>
+            <div class="value">3:20</div>
+            <div class="sub">Stunden</div>
+          </div>
+          <div class="stat-tile">
+            <div class="label">Schnitt</div>
+            <div class="value">5.5</div>
+            <div class="sub">km/h</div>
+          </div>
+          <div class="stat-tile">
+            <div class="label">Bewertung</div>
+            <div class="value" style="color:var(--c-sand)">★★★★☆</div>
+            <div class="sub">4 von 5</div>
+          </div>
+        </div>
+
+        <h2 class="section">Schwierigkeit</h2>
+        <div class="diff-row" style="font-size:.92rem;margin:8px 0">
+          <span style="width:90px;color:var(--c-text-dim)">Technisch</span>
+          <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg"></i><i class="diff-seg"></i></span>
+          <span class="mono" style="color:var(--c-text-dim);margin-left:auto">3 / 5</span>
+        </div>
+        <div class="diff-row" style="font-size:.92rem;margin:8px 0">
+          <span style="width:90px;color:var(--c-text-dim)">Körperlich</span>
+          <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg"></i><i class="diff-seg"></i><i class="diff-seg"></i></span>
+          <span class="mono" style="color:var(--c-text-dim);margin-left:auto">2 / 5</span>
+        </div>
+        <div class="diff-row" style="font-size:.92rem;margin:8px 0">
+          <span style="width:90px;color:var(--c-text-dim)">Psychisch</span>
+          <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg"></i></span>
+          <span class="mono" style="color:var(--c-text-dim);margin-left:auto">4 / 5</span>
+        </div>
+
+        <h2 class="section">Team</h2>
+        <div class="gear-tags">
+          <span class="gear-tag">Jochen S.</span>
+          <span class="gear-tag">Mareike B.</span>
+          <span class="gear-tag">Tobias W.</span>
+        </div>
+
+        <h2 class="section">Ausrüstung</h2>
+        <div class="gear-tags">
+          <span class="gear-tag">Packraft Anfibio</span>
+          <span class="gear-tag">Trockenanzug</span>
+          <span class="gear-tag">PFD</span>
+          <span class="gear-tag">Helm</span>
+          <span class="gear-tag">Wurfsack</span>
+          <span class="gear-tag">Doppelpaddel</span>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <nav class="bottom-nav">
+    <div class="nav-item active"><svg class="icon"><use href="#i-home"/></svg><span class="lbl">Feed</span></div>
+    <div class="nav-item"><svg class="icon"><use href="#i-map"/></svg><span class="lbl">Karte</span></div>
+    <div class="nav-item fab"><div class="fab-circle"><svg class="icon"><use href="#i-plus"/></svg></div><span class="lbl">Neu</span></div>
+    <div class="nav-item"><svg class="icon"><use href="#i-waves"/></svg><span class="lbl">Gewässer</span></div>
+    <div class="nav-item"><svg class="icon"><use href="#i-user"/></svg><span class="lbl">Profil</span></div>
+  </nav>
+
+</div>
+
+</body>
+</html>

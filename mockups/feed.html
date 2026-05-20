@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RaftLog Mockup — Feed</title>
+<link rel="stylesheet" href="_tokens.css">
+<link rel="stylesheet" href="_shell.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  // Theme aus URL-Parameter setzen (für Sandbox-Iframe)
+  (function() {
+    var p = new URLSearchParams(location.search);
+    document.documentElement.setAttribute('data-theme', p.get('theme') || 'dark');
+  })();
+</script>
+</head>
+<body>
+
+<!-- Icon-Sprite -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 12 12 3l9 9"/><path d="M5 10v10h14V10"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2Z"/><path d="M9 4v16M15 6v16"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-waves" viewBox="0 0 24 24"><path d="M2 6c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/><path d="M2 12c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/><path d="M2 18c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></symbol>
+  <symbol id="i-river" viewBox="0 0 24 24"><path d="M2 16c3 0 3-3 6-3s3 3 6 3 3-3 6-3 2 2 2 2"/><path d="M2 9c3 0 3-3 6-3s3 3 6 3 3-3 6-3 2 2 2 2"/></symbol>
+  <symbol id="i-lake" viewBox="0 0 24 24"><ellipse cx="12" cy="14" rx="9" ry="5"/><path d="M5 11c2-3 5-4 7-4s5 1 7 4"/></symbol>
+  <symbol id="i-cave" viewBox="0 0 24 24"><path d="M3 21V11a9 9 0 0 1 18 0v10"/><path d="M9 21v-5a3 3 0 0 1 6 0v5"/></symbol>
+  <symbol id="i-portage" viewBox="0 0 24 24"><path d="M3 20h18"/><path d="m7 20 5-12 5 12"/><circle cx="12" cy="5" r="2"/></symbol>
+  <symbol id="i-stats" viewBox="0 0 24 24"><path d="M3 21V3"/><path d="M21 21H3"/><path d="M7 17v-5M12 17V9M17 17v-8"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M20 12c0-.4 0-.8-.1-1.2l2-1.5-2-3.4-2.3.8a7 7 0 0 0-2.1-1.2L15 3h-4l-.5 2.5a7 7 0 0 0-2.1 1.2l-2.3-.8-2 3.4 2 1.5A7 7 0 0 0 6 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.8c.6.5 1.3.9 2.1 1.2L11 21h4l.5-2.5c.8-.3 1.5-.7 2.1-1.2l2.3.8 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z"/></symbol>
+</svg>
+
+<div class="app">
+
+  <!-- Sidebar (Desktop only) -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-mark"><svg class="icon icon-sm"><use href="#i-waves"/></svg></span>
+      <span>RaftLog</span>
+    </div>
+    <a class="side-item active"><svg class="icon"><use href="#i-home"/></svg><span>Feed</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-map"/></svg><span>Karte</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-waves"/></svg><span>Gewässer</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-stats"/></svg><span>Statistik</span></a>
+
+    <a class="side-item fab"><svg class="icon"><use href="#i-plus"/></svg><span>Neue Befahrung</span></a>
+
+    <div class="sidebar-section">Konto</div>
+    <a class="side-item"><svg class="icon"><use href="#i-user"/></svg><span>Profil</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-settings"/></svg><span>Einstellungen</span></a>
+  </aside>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="app-title">
+      <span class="brand-mark"><svg class="icon icon-sm"><use href="#i-waves"/></svg></span>
+      <span>Feed</span>
+    </div>
+    <div class="spacer-x"></div>
+    <button class="header-btn" aria-label="Suchen"><svg class="icon"><use href="#i-search"/></svg></button>
+    <button class="header-btn" aria-label="Mehr"><svg class="icon"><use href="#i-more"/></svg></button>
+  </header>
+
+  <!-- Main -->
+  <main class="app-main">
+
+    <h1 class="page-title">Befahrungen</h1>
+    <p class="page-subtitle">12 Trips · 247 km in 2026</p>
+
+    <div class="filter-bar">
+      <button class="filter-chip active">Alle</button>
+      <button class="filter-chip"><svg class="icon icon-sm" style="margin-right:4px;color:var(--c-type-river);vertical-align:-3px"><use href="#i-river"/></svg>Fluss</button>
+      <button class="filter-chip"><svg class="icon icon-sm" style="margin-right:4px;color:var(--c-type-lake);vertical-align:-3px"><use href="#i-lake"/></svg>See</button>
+      <button class="filter-chip"><svg class="icon icon-sm" style="margin-right:4px;color:var(--c-type-cave);vertical-align:-3px"><use href="#i-cave"/></svg>Höhle</button>
+      <button class="filter-chip"><svg class="icon icon-sm" style="margin-right:4px;color:var(--c-type-portage);vertical-align:-3px"><use href="#i-portage"/></svg>Portage</button>
+      <button class="filter-chip">2026</button>
+      <button class="filter-chip">2025</button>
+    </div>
+
+    <div class="feed-grid">
+
+      <article class="trip-card">
+        <div class="trip-hero" style="background-image:linear-gradient(135deg,#0d3b66 0%,#14b8a6 60%,#90cdf4 100%)">
+          <div class="trip-hero-info">
+            <span class="chip" data-type="river"><svg class="icon icon-sm"><use href="#i-river"/></svg>Fluss</span>
+            <span class="chip" data-type="river" style="background:rgba(20,184,166,.22)">WW III</span>
+            <span class="meta-date">12.04.2026</span>
+          </div>
+        </div>
+        <div class="trip-body">
+          <h3 class="trip-title">Aller-Etappe Verden → Achim</h3>
+          <div class="trip-meta">Aller · 18.4 km · 3 h 20 min</div>
+          <div class="trip-footer">
+            <div style="display:flex;gap:14px;flex-wrap:wrap">
+              <div class="diff-row">T <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg"></i><i class="diff-seg"></i></span></div>
+              <div class="diff-row">K <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg"></i><i class="diff-seg"></i><i class="diff-seg"></i></span></div>
+              <div class="diff-row">P <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg"></i></span></div>
+            </div>
+            <div class="rating" title="4/5">★★★★☆</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="trip-card">
+        <div class="trip-hero" style="background-image:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 50%,#bae6fd 100%)">
+          <div class="trip-hero-info">
+            <span class="chip" data-type="lake"><svg class="icon icon-sm"><use href="#i-lake"/></svg>See</span>
+            <span class="chip" data-type="lake" style="background:rgba(59,130,246,.22)">Bf 4</span>
+            <span class="meta-date">05.04.2026</span>
+          </div>
+        </div>
+        <div class="trip-body">
+          <h3 class="trip-title">Steinhuder Meer — Umrundung</h3>
+          <div class="trip-meta">Steinhuder Meer · 21.2 km · 5 h</div>
+          <div class="trip-footer">
+            <div style="display:flex;gap:14px;flex-wrap:wrap">
+              <div class="diff-row">T <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg"></i><i class="diff-seg"></i><i class="diff-seg"></i></span></div>
+              <div class="diff-row">K <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg"></i></span></div>
+              <div class="diff-row">P <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg"></i><i class="diff-seg"></i><i class="diff-seg"></i><i class="diff-seg"></i></span></div>
+            </div>
+            <div class="rating">★★★☆☆</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="trip-card">
+        <div class="trip-hero" style="background-image:linear-gradient(135deg,#3b2210 0%,#7a4a1c 60%,#b8823a 100%)">
+          <div class="trip-hero-info">
+            <span class="chip" data-type="cave"><svg class="icon icon-sm"><use href="#i-cave"/></svg>Höhle</span>
+            <span class="chip" data-type="cave" style="background:rgba(184,130,58,.22)">Nass</span>
+            <span class="meta-date">22.03.2026</span>
+          </div>
+        </div>
+        <div class="trip-body">
+          <h3 class="trip-title">Schwarzmoos-Schwinde · Sumpfgang</h3>
+          <div class="trip-meta">Schwarzmoos · 1.8 km · 4 h 15 min</div>
+          <div class="trip-footer">
+            <div style="display:flex;gap:14px;flex-wrap:wrap">
+              <div class="diff-row">T <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg"></i></span></div>
+              <div class="diff-row">K <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg"></i><i class="diff-seg"></i></span></div>
+              <div class="diff-row">P <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i></span></div>
+            </div>
+            <div class="rating">★★★★★</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="trip-card">
+        <div class="trip-hero" style="background-image:linear-gradient(135deg,#1a3d1a 0%,#588055 50%,#84cc16 100%)">
+          <div class="trip-hero-info">
+            <span class="chip" data-type="portage"><svg class="icon icon-sm"><use href="#i-portage"/></svg>Portage</span>
+            <span class="chip" data-type="portage" style="background:rgba(132,204,22,.22)">3.2 km</span>
+            <span class="meta-date">15.03.2026</span>
+          </div>
+        </div>
+        <div class="trip-body">
+          <h3 class="trip-title">Übergang Aller → Weser via Hodenhagen</h3>
+          <div class="trip-meta">Heide · 3.2 km · 1 h 10 min</div>
+          <div class="trip-footer">
+            <div style="display:flex;gap:14px;flex-wrap:wrap">
+              <div class="diff-row">T <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg"></i><i class="diff-seg"></i><i class="diff-seg"></i><i class="diff-seg"></i></span></div>
+              <div class="diff-row">K <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg"></i><i class="diff-seg"></i></span></div>
+              <div class="diff-row">P <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg"></i><i class="diff-seg"></i><i class="diff-seg"></i><i class="diff-seg"></i></span></div>
+            </div>
+            <div class="rating">★★★☆☆</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="trip-card">
+        <div class="trip-hero" style="background-image:linear-gradient(135deg,#0f172a 0%,#0d9488 50%,#5eead4 100%)">
+          <div class="trip-hero-info">
+            <span class="chip" data-type="river"><svg class="icon icon-sm"><use href="#i-river"/></svg>Fluss</span>
+            <span class="chip" data-type="river" style="background:rgba(20,184,166,.22)">WW II</span>
+            <span class="meta-date">28.02.2026</span>
+          </div>
+        </div>
+        <div class="trip-body">
+          <h3 class="trip-title">Leine — Hannover bis Schwarmstedt</h3>
+          <div class="trip-meta">Leine · 34.8 km · 6 h 45 min</div>
+          <div class="trip-footer">
+            <div style="display:flex;gap:14px;flex-wrap:wrap">
+              <div class="diff-row">T <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg"></i><i class="diff-seg"></i><i class="diff-seg"></i></span></div>
+              <div class="diff-row">K <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg"></i><i class="diff-seg"></i></span></div>
+              <div class="diff-row">P <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg"></i><i class="diff-seg"></i><i class="diff-seg"></i></span></div>
+            </div>
+            <div class="rating">★★★★☆</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="trip-card">
+        <div class="trip-hero" style="background-image:linear-gradient(135deg,#1e3a8a 0%,#2563eb 60%,#93c5fd 100%)">
+          <div class="trip-hero-info">
+            <span class="chip" data-type="lake"><svg class="icon icon-sm"><use href="#i-lake"/></svg>See</span>
+            <span class="chip" data-type="lake" style="background:rgba(59,130,246,.22)">2 Tage</span>
+            <span class="meta-date">07.–08.02.2026</span>
+          </div>
+        </div>
+        <div class="trip-body">
+          <h3 class="trip-title">Mecklenburger Seenrunde</h3>
+          <div class="trip-meta">Müritz, Plauer See · 48.5 km</div>
+          <div class="trip-footer">
+            <div style="display:flex;gap:14px;flex-wrap:wrap">
+              <div class="diff-row">T <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg"></i><i class="diff-seg"></i><i class="diff-seg"></i></span></div>
+              <div class="diff-row">K <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg on"></i></span></div>
+              <div class="diff-row">P <span class="diff-bars"><i class="diff-seg on"></i><i class="diff-seg on"></i><i class="diff-seg"></i><i class="diff-seg"></i><i class="diff-seg"></i></span></div>
+            </div>
+            <div class="rating">★★★★★</div>
+          </div>
+        </div>
+      </article>
+
+    </div>
+
+  </main>
+
+  <!-- Bottom-Nav (Mobile only) -->
+  <nav class="bottom-nav">
+    <div class="nav-item active">
+      <svg class="icon"><use href="#i-home"/></svg>
+      <span class="lbl">Feed</span>
+    </div>
+    <div class="nav-item">
+      <svg class="icon"><use href="#i-map"/></svg>
+      <span class="lbl">Karte</span>
+    </div>
+    <div class="nav-item fab">
+      <div class="fab-circle"><svg class="icon"><use href="#i-plus"/></svg></div>
+      <span class="lbl">Neu</span>
+    </div>
+    <div class="nav-item">
+      <svg class="icon"><use href="#i-waves"/></svg>
+      <span class="lbl">Gewässer</span>
+    </div>
+    <div class="nav-item">
+      <svg class="icon"><use href="#i-user"/></svg>
+      <span class="lbl">Profil</span>
+    </div>
+  </nav>
+
+</div>
+
+</body>
+</html>

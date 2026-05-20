@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RaftLog — Mockup-Sandbox</title>
+<link rel="stylesheet" href="_tokens.css">
+<style>
+  body {
+    min-height: 100vh;
+    background: var(--c-bg);
+    color: var(--c-text);
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+  header.sandbox {
+    background: var(--c-bg-2);
+    border-bottom: 1px solid var(--c-border);
+    padding: 12px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+  }
+  .brand {
+    font-weight: 700;
+    font-size: 1.05rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .brand-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--c-water);
+    box-shadow: 0 0 10px var(--c-water);
+  }
+  .ctl-group {
+    display: inline-flex;
+    background: var(--c-bg-3);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .ctl-group button {
+    background: transparent;
+    border: none;
+    color: var(--c-text-dim);
+    font: 500 0.84rem var(--font-sans);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .ctl-group button.active {
+    background: var(--c-water);
+    color: #fff;
+  }
+  .ctl-group button:hover:not(.active) { color: var(--c-text); }
+  .ctl-label {
+    font-size: 0.72rem;
+    color: var(--c-text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-right: 4px;
+  }
+  .spacer { flex: 1; }
+  .info {
+    font-size: 0.78rem;
+    color: var(--c-text-dim);
+  }
+  .stage {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px;
+    background:
+      radial-gradient(ellipse at top, rgba(20,184,166,.05) 0%, transparent 60%),
+      var(--c-bg);
+    overflow: auto;
+  }
+  .device {
+    background: var(--c-bg);
+    border-radius: 18px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.4), 0 0 0 1px var(--c-border);
+    overflow: hidden;
+    transition: width .25s ease, height .25s ease;
+    height: 820px;
+  }
+  .device iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+  }
+  .device.w-mobile  { width: 390px; }
+  .device.w-tablet  { width: 768px; }
+  .device.w-desktop { width: 1280px; height: 800px; }
+
+  @media (max-width: 900px) {
+    .device.w-desktop, .device.w-tablet { width: 100%; max-width: 100%; }
+    .device { height: 75vh; }
+    header.sandbox { padding: 10px 14px; gap: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="sandbox">
+  <div class="brand"><span class="brand-dot"></span> RaftLog Mockups</div>
+
+  <div>
+    <span class="ctl-label">Screen</span>
+    <div class="ctl-group" id="screen-ctl">
+      <button data-screen="feed.html" class="active">Feed</button>
+      <button data-screen="detail.html">Detail</button>
+      <button data-screen="photos.html">Fotos</button>
+      <button data-screen="new.html">Neu</button>
+      <button data-screen="waters.html">Gewässer</button>
+    </div>
+  </div>
+
+  <div>
+    <span class="ctl-label">Viewport</span>
+    <div class="ctl-group" id="size-ctl">
+      <button data-size="mobile" class="active">📱 Mobile · 390</button>
+      <button data-size="tablet">📲 Tablet · 768</button>
+      <button data-size="desktop">🖥 Desktop · 1280</button>
+    </div>
+  </div>
+
+  <div>
+    <span class="ctl-label">Theme</span>
+    <div class="ctl-group" id="theme-ctl">
+      <button data-theme="dark" class="active">Dark</button>
+      <button data-theme="light">Light</button>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+  <div class="info" id="info-line">Mobile · Dark · Feed</div>
+</header>
+
+<div class="stage">
+  <div class="device w-mobile" id="device">
+    <iframe id="frame" src="feed.html?theme=dark"></iframe>
+  </div>
+</div>
+
+<script>
+  const $frame = document.getElementById('frame');
+  const $device = document.getElementById('device');
+  const $info = document.getElementById('info-line');
+  let state = { screen: 'feed.html', size: 'mobile', theme: 'dark' };
+
+  function reload() {
+    $frame.src = state.screen + '?theme=' + state.theme + '&size=' + state.size;
+    $device.classList.remove('w-mobile','w-tablet','w-desktop');
+    $device.classList.add('w-' + state.size);
+    document.documentElement.setAttribute('data-theme', state.theme);
+    const screenLabel = state.screen.replace('.html','').replace(/^./, c => c.toUpperCase());
+    $info.textContent = state.size[0].toUpperCase() + state.size.slice(1) + ' · ' + state.theme[0].toUpperCase() + state.theme.slice(1) + ' · ' + screenLabel;
+  }
+
+  function wire(id, key) {
+    const ctl = document.getElementById(id);
+    ctl.querySelectorAll('button').forEach(b => {
+      b.addEventListener('click', () => {
+        ctl.querySelectorAll('button').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        state[key] = b.dataset[key];
+        reload();
+      });
+    });
+  }
+  wire('screen-ctl', 'screen');
+  wire('size-ctl',   'size');
+  wire('theme-ctl',  'theme');
+</script>
+
+</body>
+</html>

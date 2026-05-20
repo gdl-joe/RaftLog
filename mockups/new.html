@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RaftLog Mockup — Neue Befahrung</title>
+<link rel="stylesheet" href="_tokens.css">
+<link rel="stylesheet" href="_shell.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  (function() {
+    var p = new URLSearchParams(location.search);
+    document.documentElement.setAttribute('data-theme', p.get('theme') || 'dark');
+  })();
+</script>
+<style>
+  .wizard-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .progress {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .progress .dot {
+    width: 24px; height: 4px;
+    border-radius: 2px;
+    background: var(--c-bg-3);
+  }
+  .progress .dot.active { background: var(--c-water); }
+  .progress .step {
+    margin-left: 10px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--c-text-dim);
+  }
+  .close-btn {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: var(--c-bg-3);
+    border: none;
+    color: var(--c-text);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .wizard-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  .wizard-sub {
+    font-size: 0.95rem;
+    color: var(--c-text-dim);
+    margin-bottom: 28px;
+  }
+
+  .type-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  @media (min-width: 768px) {
+    .type-grid { grid-template-columns: 1fr 1fr 1fr 1fr; gap: 18px; }
+  }
+  @media (min-width: 1024px) {
+    .type-grid { max-width: 920px; gap: 22px; }
+  }
+
+  .type-tile {
+    aspect-ratio: 1/1.05;
+    background: var(--c-surface);
+    border: 2px solid var(--c-border);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 18px;
+    cursor: pointer;
+    transition: all .2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .type-tile:hover { transform: translateY(-3px); }
+  .type-tile::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--tile-color);
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+  .type-tile:hover::before { opacity: 0.08; }
+
+  .type-tile .ti-icon {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: var(--tile-color-tint);
+    color: var(--tile-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+  }
+  .type-tile .ti-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--c-text);
+  }
+  .type-tile .ti-sub {
+    font-size: 0.78rem;
+    color: var(--c-text-dim);
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .type-tile.selected {
+    border-color: var(--tile-color);
+    box-shadow: 0 0 0 4px var(--tile-color-tint);
+  }
+  .type-tile.selected::before { opacity: 0.10; }
+
+  /* tile colors via CSS vars */
+  .type-tile[data-type="river"]   { --tile-color: var(--c-type-river);   --tile-color-tint: rgba(20,184,166,.15); }
+  .type-tile[data-type="lake"]    { --tile-color: var(--c-type-lake);    --tile-color-tint: rgba(59,130,246,.15); }
+  .type-tile[data-type="cave"]    { --tile-color: var(--c-type-cave);    --tile-color-tint: rgba(184,130,58,.15); }
+  .type-tile[data-type="portage"] { --tile-color: var(--c-type-portage); --tile-color-tint: rgba(132,204,22,.15); }
+
+  .wizard-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid var(--c-border);
+  }
+  .btn {
+    border: none;
+    cursor: pointer;
+    font: 600 0.95rem var(--font-sans);
+    border-radius: 12px;
+    padding: 12px 24px;
+    min-height: 48px;
+    transition: all .2s ease;
+  }
+  .btn-primary {
+    background: var(--c-water); color: #fff;
+  }
+  .btn-primary:hover { background: var(--c-water-light); transform: translateY(-1px); }
+  .btn-secondary {
+    background: var(--c-bg-3); color: var(--c-text);
+    border: 1px solid var(--c-border);
+  }
+</style>
+</head>
+<body>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 12 12 3l9 9"/><path d="M5 10v10h14V10"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2Z"/><path d="M9 4v16M15 6v16"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-waves" viewBox="0 0 24 24"><path d="M2 6c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/><path d="M2 12c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/><path d="M2 18c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></symbol>
+  <symbol id="i-river" viewBox="0 0 24 24"><path d="M2 16c3 0 3-3 6-3s3 3 6 3 3-3 6-3 2 2 2 2"/><path d="M2 9c3 0 3-3 6-3s3 3 6 3 3-3 6-3 2 2 2 2"/></symbol>
+  <symbol id="i-lake" viewBox="0 0 24 24"><ellipse cx="12" cy="14" rx="9" ry="5"/><path d="M5 11c2-3 5-4 7-4s5 1 7 4"/></symbol>
+  <symbol id="i-cave" viewBox="0 0 24 24"><path d="M3 21V11a9 9 0 0 1 18 0v10"/><path d="M9 21v-5a3 3 0 0 1 6 0v5"/></symbol>
+  <symbol id="i-portage" viewBox="0 0 24 24"><path d="M3 20h18"/><path d="m7 20 5-12 5 12"/><circle cx="12" cy="5" r="2"/></symbol>
+  <symbol id="i-stats" viewBox="0 0 24 24"><path d="M3 21V3"/><path d="M21 21H3"/><path d="M7 17v-5M12 17V9M17 17v-8"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M20 12c0-.4 0-.8-.1-1.2l2-1.5-2-3.4-2.3.8a7 7 0 0 0-2.1-1.2L15 3h-4l-.5 2.5a7 7 0 0 0-2.1 1.2l-2.3-.8-2 3.4 2 1.5A7 7 0 0 0 6 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.8c.6.5 1.3.9 2.1 1.2L11 21h4l.5-2.5c.8-.3 1.5-.7 2.1-1.2l2.3.8 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z"/></symbol>
+</svg>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-mark"><svg class="icon icon-sm"><use href="#i-waves"/></svg></span>
+      <span>RaftLog</span>
+    </div>
+    <a class="side-item"><svg class="icon"><use href="#i-home"/></svg><span>Feed</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-map"/></svg><span>Karte</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-waves"/></svg><span>Gewässer</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-stats"/></svg><span>Statistik</span></a>
+    <a class="side-item fab active"><svg class="icon"><use href="#i-plus"/></svg><span>Neue Befahrung</span></a>
+    <div class="sidebar-section">Konto</div>
+    <a class="side-item"><svg class="icon"><use href="#i-user"/></svg><span>Profil</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-settings"/></svg><span>Einstellungen</span></a>
+  </aside>
+
+  <header class="app-header">
+    <button class="close-btn" aria-label="Abbrechen"><svg class="icon"><use href="#i-x"/></svg></button>
+    <div class="app-title"><span style="font-size:.95rem;font-weight:600">Neue Befahrung</span></div>
+    <div class="spacer-x"></div>
+    <div class="progress">
+      <span class="dot active"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="step">Schritt 1 / 4</span>
+    </div>
+  </header>
+
+  <main class="app-main">
+
+    <h1 class="wizard-title">Welcher Typ?</h1>
+    <p class="wizard-sub">Wähle, was du heute befahren hast — die Folge-Schritte passen sich an.</p>
+
+    <div class="type-grid">
+
+      <div class="type-tile selected" data-type="river">
+        <div class="ti-icon"><svg class="icon icon-xl"><use href="#i-river"/></svg></div>
+        <div class="ti-title">Fluss</div>
+        <div class="ti-sub">Wildwasser, Strömung,<br>WW-Grad</div>
+      </div>
+
+      <div class="type-tile" data-type="lake">
+        <div class="ti-icon"><svg class="icon icon-xl"><use href="#i-lake"/></svg></div>
+        <div class="ti-title">See</div>
+        <div class="ti-sub">Stillwasser, Wind,<br>Querung</div>
+      </div>
+
+      <div class="type-tile" data-type="cave">
+        <div class="ti-icon"><svg class="icon icon-xl"><use href="#i-cave"/></svg></div>
+        <div class="ti-title">Höhle</div>
+        <div class="ti-sub">Packraft in Höhle,<br>Tiefe, Lampen</div>
+      </div>
+
+      <div class="type-tile" data-type="portage">
+        <div class="ti-icon"><svg class="icon icon-xl"><use href="#i-portage"/></svg></div>
+        <div class="ti-title">Portage</div>
+        <div class="ti-sub">Tragen / Schieben,<br>Übergang</div>
+      </div>
+
+    </div>
+
+    <div class="wizard-foot">
+      <button class="btn btn-secondary">Abbrechen</button>
+      <button class="btn btn-primary">Weiter →</button>
+    </div>
+
+  </main>
+
+  <nav class="bottom-nav">
+    <div class="nav-item"><svg class="icon"><use href="#i-home"/></svg><span class="lbl">Feed</span></div>
+    <div class="nav-item"><svg class="icon"><use href="#i-map"/></svg><span class="lbl">Karte</span></div>
+    <div class="nav-item fab active"><div class="fab-circle"><svg class="icon"><use href="#i-plus"/></svg></div><span class="lbl">Neu</span></div>
+    <div class="nav-item"><svg class="icon"><use href="#i-waves"/></svg><span class="lbl">Gewässer</span></div>
+    <div class="nav-item"><svg class="icon"><use href="#i-user"/></svg><span class="lbl">Profil</span></div>
+  </nav>
+
+</div>
+
+</body>
+</html>

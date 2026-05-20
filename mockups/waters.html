@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RaftLog Mockup — Gewässer</title>
+<link rel="stylesheet" href="_tokens.css">
+<link rel="stylesheet" href="_shell.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  (function() {
+    var p = new URLSearchParams(location.search);
+    document.documentElement.setAttribute('data-theme', p.get('theme') || 'dark');
+  })();
+</script>
+<style>
+  .waters-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 18px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .waters-tabs::-webkit-scrollbar { display: none; }
+  .water-tab {
+    flex: 0 0 auto;
+    background: var(--c-bg-2);
+    border: 1px solid var(--c-border);
+    color: var(--c-text-dim);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all .15s ease;
+  }
+  .water-tab.active {
+    background: var(--c-water);
+    color: #fff;
+    border-color: var(--c-water);
+  }
+
+  .water-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 700px) {
+    .water-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (min-width: 1280px) {
+    .water-grid { grid-template-columns: 1fr 1fr 1fr; }
+  }
+
+  .water-card {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    gap: 14px;
+    align-items: center;
+    cursor: pointer;
+    transition: all .2s ease;
+  }
+  .water-card:hover {
+    border-color: var(--c-water-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+  .water-icon {
+    width: 56px; height: 56px;
+    border-radius: 12px;
+    background: var(--c-bg-3);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--c-water);
+  }
+  .water-card[data-type="river"] .water-icon   { color: var(--c-type-river);   background: rgba(20,184,166,.12); }
+  .water-card[data-type="lake"] .water-icon    { color: var(--c-type-lake);    background: rgba(59,130,246,.12); }
+  .water-card[data-type="cave"] .water-icon    { color: var(--c-type-cave);    background: rgba(184,130,58,.12); }
+  .water-card[data-type="portage"] .water-icon { color: var(--c-type-portage); background: rgba(132,204,22,.12); }
+
+  .water-name { font-weight: 600; font-size: 1rem; line-height: 1.2; }
+  .water-meta { font-size: 0.82rem; color: var(--c-text-dim); margin-top: 3px; font-family: var(--font-mono); }
+
+  .count-badge {
+    background: var(--c-bg-3);
+    color: var(--c-text);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    padding: 4px 10px;
+    border-radius: 8px;
+    text-align: center;
+  }
+  .count-badge .num { font-weight: 600; }
+  .count-badge .sub { font-size: 0.66rem; color: var(--c-text-dim); }
+</style>
+</head>
+<body>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 12 12 3l9 9"/><path d="M5 10v10h14V10"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2Z"/><path d="M9 4v16M15 6v16"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-waves" viewBox="0 0 24 24"><path d="M2 6c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/><path d="M2 12c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/><path d="M2 18c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-river" viewBox="0 0 24 24"><path d="M2 16c3 0 3-3 6-3s3 3 6 3 3-3 6-3 2 2 2 2"/><path d="M2 9c3 0 3-3 6-3s3 3 6 3 3-3 6-3 2 2 2 2"/></symbol>
+  <symbol id="i-lake" viewBox="0 0 24 24"><ellipse cx="12" cy="14" rx="9" ry="5"/><path d="M5 11c2-3 5-4 7-4s5 1 7 4"/></symbol>
+  <symbol id="i-cave" viewBox="0 0 24 24"><path d="M3 21V11a9 9 0 0 1 18 0v10"/><path d="M9 21v-5a3 3 0 0 1 6 0v5"/></symbol>
+  <symbol id="i-portage" viewBox="0 0 24 24"><path d="M3 20h18"/><path d="m7 20 5-12 5 12"/><circle cx="12" cy="5" r="2"/></symbol>
+  <symbol id="i-stats" viewBox="0 0 24 24"><path d="M3 21V3"/><path d="M21 21H3"/><path d="M7 17v-5M12 17V9M17 17v-8"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M20 12c0-.4 0-.8-.1-1.2l2-1.5-2-3.4-2.3.8a7 7 0 0 0-2.1-1.2L15 3h-4l-.5 2.5a7 7 0 0 0-2.1 1.2l-2.3-.8-2 3.4 2 1.5A7 7 0 0 0 6 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.8c.6.5 1.3.9 2.1 1.2L11 21h4l.5-2.5c.8-.3 1.5-.7 2.1-1.2l2.3.8 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z"/></symbol>
+</svg>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-mark"><svg class="icon icon-sm"><use href="#i-waves"/></svg></span>
+      <span>RaftLog</span>
+    </div>
+    <a class="side-item"><svg class="icon"><use href="#i-home"/></svg><span>Feed</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-map"/></svg><span>Karte</span></a>
+    <a class="side-item active"><svg class="icon"><use href="#i-waves"/></svg><span>Gewässer</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-stats"/></svg><span>Statistik</span></a>
+    <a class="side-item fab"><svg class="icon"><use href="#i-plus"/></svg><span>Neue Befahrung</span></a>
+    <div class="sidebar-section">Konto</div>
+    <a class="side-item"><svg class="icon"><use href="#i-user"/></svg><span>Profil</span></a>
+    <a class="side-item"><svg class="icon"><use href="#i-settings"/></svg><span>Einstellungen</span></a>
+  </aside>
+
+  <header class="app-header">
+    <div class="app-title">
+      <span class="brand-mark"><svg class="icon icon-sm"><use href="#i-waves"/></svg></span>
+      <span>Gewässer</span>
+    </div>
+    <div class="spacer-x"></div>
+    <button class="header-btn"><svg class="icon"><use href="#i-search"/></svg></button>
+    <button class="header-btn"><svg class="icon"><use href="#i-more"/></svg></button>
+  </header>
+
+  <main class="app-main">
+
+    <h1 class="page-title">Meine Gewässer</h1>
+    <p class="page-subtitle">8 Flüsse · 5 Seen · 3 Höhlen · 2 Portage-Strecken</p>
+
+    <div class="waters-tabs">
+      <button class="water-tab active">Alle <span style="opacity:.7">18</span></button>
+      <button class="water-tab"><svg class="icon icon-sm" style="color:var(--c-type-river)"><use href="#i-river"/></svg>Flüsse</button>
+      <button class="water-tab"><svg class="icon icon-sm" style="color:var(--c-type-lake)"><use href="#i-lake"/></svg>Seen</button>
+      <button class="water-tab"><svg class="icon icon-sm" style="color:var(--c-type-cave)"><use href="#i-cave"/></svg>Höhlen</button>
+      <button class="water-tab"><svg class="icon icon-sm" style="color:var(--c-type-portage)"><use href="#i-portage"/></svg>Portage</button>
+    </div>
+
+    <div class="water-grid">
+
+      <div class="water-card" data-type="river">
+        <div class="water-icon"><svg class="icon icon-lg"><use href="#i-river"/></svg></div>
+        <div>
+          <div class="water-name">Aller</div>
+          <div class="water-meta">Niedersachsen · 264 km · WW I–II</div>
+        </div>
+        <div class="count-badge">
+          <div class="num">7</div>
+          <div class="sub">Trips</div>
+        </div>
+      </div>
+
+      <div class="water-card" data-type="lake">
+        <div class="water-icon"><svg class="icon icon-lg"><use href="#i-lake"/></svg></div>
+        <div>
+          <div class="water-name">Steinhuder Meer</div>
+          <div class="water-meta">Niedersachsen · 29.1 km²</div>
+        </div>
+        <div class="count-badge">
+          <div class="num">4</div>
+          <div class="sub">Trips</div>
+        </div>
+      </div>
+
+      <div class="water-card" data-type="river">
+        <div class="water-icon"><svg class="icon icon-lg"><use href="#i-river"/></svg></div>
+        <div>
+          <div class="water-name">Leine</div>
+          <div class="water-meta">Niedersachsen · 281 km · WW I</div>
+        </div>
+        <div class="count-badge">
+          <div class="num">5</div>
+          <div class="sub">Trips</div>
+        </div>
+      </div>
+
+      <div class="water-card" data-type="cave">
+        <div class="water-icon"><svg class="icon icon-lg"><use href="#i-cave"/></svg></div>
+        <div>
+          <div class="water-name">Schwarzmoos-Schwinde</div>
+          <div class="water-meta">Schwäbische Alb · −145 m · 2.4 km</div>
+        </div>
+        <div class="count-badge">
+          <div class="num">2</div>
+          <div class="sub">Trips</div>
+        </div>
+      </div>
+
+      <div class="water-card" data-type="lake">
+        <div class="water-icon"><svg class="icon icon-lg"><use href="#i-lake"/></svg></div>
+        <div>
+          <div class="water-name">Müritz</div>
+          <div class="water-meta">Mecklenburg · 117 km²</div>
+        </div>
+        <div class="count-badge">
+          <div class="num">3</div>
+          <div class="sub">Trips</div>
+        </div>
+      </div>
+
+      <div class="water-card" data-type="portage">
+        <div class="water-icon"><svg class="icon icon-lg"><use href="#i-portage"/></svg></div>
+        <div>
+          <div class="water-name">Aller → Weser (Hodenhagen)</div>
+          <div class="water-meta">Niedersachsen · 3.2 km · 28 hm</div>
+        </div>
+        <div class="count-badge">
+          <div class="num">2</div>
+          <div class="sub">Trips</div>
+        </div>
+      </div>
+
+      <div class="water-card" data-type="river">
+        <div class="water-icon"><svg class="icon icon-lg"><use href="#i-river"/></svg></div>
+        <div>
+          <div class="water-name">Werra</div>
+          <div class="water-meta">Thüringen/Hessen · 298 km · WW II–III</div>
+        </div>
+        <div class="count-badge">
+          <div class="num">3</div>
+          <div class="sub">Trips</div>
+        </div>
+      </div>
+
+      <div class="water-card" data-type="cave">
+        <div class="water-icon"><svg class="icon icon-lg"><use href="#i-cave"/></svg></div>
+        <div>
+          <div class="water-name">Falkensteiner Höhle</div>
+          <div class="water-meta">Schwäbische Alb · 2.8 km · Nass</div>
+        </div>
+        <div class="count-badge">
+          <div class="num">1</div>
+          <div class="sub">Trip</div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <nav class="bottom-nav">
+    <div class="nav-item"><svg class="icon"><use href="#i-home"/></svg><span class="lbl">Feed</span></div>
+    <div class="nav-item"><svg class="icon"><use href="#i-map"/></svg><span class="lbl">Karte</span></div>
+    <div class="nav-item fab"><div class="fab-circle"><svg class="icon"><use href="#i-plus"/></svg></div><span class="lbl">Neu</span></div>
+    <div class="nav-item active"><svg class="icon"><use href="#i-waves"/></svg><span class="lbl">Gewässer</span></div>
+    <div class="nav-item"><svg class="icon"><use href="#i-user"/></svg><span class="lbl">Profil</span></div>
+  </nav>
+
+</div>
+
+</body>
+</html>

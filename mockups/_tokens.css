@@ -1,0 +1,81 @@
+/* RaftLog Design Tokens — Dark Mode Default */
+
+:root, :root[data-theme="dark"] {
+  --c-bg:          #0e1820;
+  --c-bg-2:        #15212a;
+  --c-bg-3:        #1b2934;
+  --c-surface:     #15212a;
+  --c-border:      #2a3a47;
+
+  --c-text:        #e6eef4;
+  --c-text-dim:    #93a4b1;
+  --c-text-faint:  #5d6f7c;
+
+  --c-water:       #14b8a6;
+  --c-water-light: #2dd4bf;
+  --c-water-dark:  #0d9488;
+  --c-water-glow:  rgba(20,184,166,.14);
+
+  --c-sand:        #d4a574;
+  --c-sand-light:  #e7c79c;
+
+  --c-type-river:    #14b8a6;
+  --c-type-lake:     #3b82f6;
+  --c-type-cave:     #b8823a;
+  --c-type-portage:  #84cc16;
+
+  --c-success:     #22c55e;
+  --c-warning:     #f59e0b;
+  --c-danger:      #ef4444;
+
+  --shadow-sm:     0 1px 2px rgba(0,0,0,.3);
+  --shadow-md:     0 4px 12px rgba(0,0,0,.35);
+  --shadow-lg:     0 12px 32px rgba(0,0,0,.45);
+  --shadow-glow:   0 0 24px rgba(20,184,166,.18);
+
+  --radius-sm: 8px;
+  --radius:    12px;
+  --radius-lg: 20px;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+}
+
+:root[data-theme="light"] {
+  --c-bg:          #f5f7fa;
+  --c-bg-2:        #ffffff;
+  --c-bg-3:        #eef2f6;
+  --c-surface:     #ffffff;
+  --c-border:      #d6dee5;
+
+  --c-text:        #0f1e2a;
+  --c-text-dim:    #4a5d6e;
+  --c-text-faint:  #8395a4;
+
+  --c-water:       #0d9488;
+  --c-water-light: #14b8a6;
+  --c-water-dark:  #0f766e;
+  --c-water-glow:  rgba(13,148,136,.10);
+
+  --c-sand:        #b88456;
+  --c-sand-light:  #d4a574;
+
+  --c-type-river:    #0d9488;
+  --c-type-lake:     #2563eb;
+  --c-type-cave:     #9a6a28;
+  --c-type-portage:  #65a30d;
+
+  --shadow-sm:     0 1px 2px rgba(15,30,42,.06);
+  --shadow-md:     0 4px 12px rgba(15,30,42,.08);
+  --shadow-lg:     0 12px 32px rgba(15,30,42,.12);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans);
+  color: var(--c-text);
+  background: var(--c-bg);
+  -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
