@@ -22,12 +22,19 @@ if ($method === 'GET') {
     $tripId = $_GET['trip_id'] ?? '';
     if (!$tripId) Response::error('trip_id fehlt');
     $stmt = $db->prepare("
-        SELECT id, trip_id, source, gpx_path, point_count, distance_km, duration_s,
-               ele_gain_m, bbox_n, bbox_s, bbox_e, bbox_w, created_at
+        SELECT id, trip_id, source, gpx_path, points_json, point_count, distance_km,
+               duration_s, ele_gain_m, bbox_n, bbox_s, bbox_e, bbox_w, created_at
         FROM trip_tracks WHERE trip_id = ? ORDER BY id ASC
     ");
     $stmt->execute([$tripId]);
-    Response::json($stmt->fetchAll());
+    $rows = $stmt->fetchAll();
+    foreach ($rows as &$r) {
+        if ($r['points_json']) {
+            $r['points'] = json_decode($r['points_json'], true);
+            unset($r['points_json']);
+        }
+    }
+    Response::json($rows);
 }
 
 // ── POST /api/tracks (multipart oder json) ────────────────

@@ -3,11 +3,6 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Icon } from '../icons.jsx';
 
-// Karten-Picker für Trip-Koordinaten.
-// Modi:
-//   single   — ein Punkt (z.B. See-Position)
-//   start_end — zwei Punkte (z.B. put_in / take_out, oder portage start/end)
-
 const OSM = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const MAPY = (key) => `https://api.mapy.cz/v1/maptiles/outdoor/256/{z}/{x}/{y}?apikey=${key}`;
 
@@ -41,6 +36,14 @@ export default function MapPicker({ mode = 'start_end', value, onChange, default
   const [geocoding, setGeocoding] = useState(false);
   const [searchQ, setSearchQ] = useState('');
 
+  // Refs für aktuelle Werte — vermeidet veraltete Closures in map.on('click')
+  const valueRef = useRef(value);
+  const activeSlotRef = useRef(activeSlot);
+  const onChangeRef = useRef(onChange);
+  useEffect(() => { valueRef.current = value; }, [value]);
+  useEffect(() => { activeSlotRef.current = activeSlot; }, [activeSlot]);
+  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+
   // Map initialisieren (einmal)
   useEffect(() => {
     if (!mapEl.current || mapRef.current) return;
@@ -59,27 +62,28 @@ export default function MapPicker({ mode = 'start_end', value, onChange, default
 
     map.on('click', (e) => {
       const { lat, lng } = e.latlng;
-      setActiveSlot(slot => {
-        const v = { ...(value || {}) };
-        if (mode === 'single' || slot === 'single') {
-          v.lat = round(lat); v.lng = round(lng);
-          onChange?.(v);
-          return slot;
-        }
-        if (slot === 'start') {
-          v.start_lat = round(lat); v.start_lng = round(lng);
-          onChange?.(v);
-          return 'end';   // nächster Klick setzt End-Punkt
-        }
+      const v = { ...(valueRef.current || {}) };
+      const slot = activeSlotRef.current;
+
+      if (mode === 'single' || slot === 'single') {
+        v.lat = round(lat); v.lng = round(lng);
+        onChangeRef.current?.(v);
+        return;
+      }
+      if (slot === 'start') {
+        v.start_lat = round(lat); v.start_lng = round(lng);
+        onChangeRef.current?.(v);
+        // Wenn B noch nicht gesetzt, automatisch auf B umschalten
+        if (v.end_lat == null) setActiveSlot('end');
+      } else {
         v.end_lat = round(lat); v.end_lng = round(lng);
-        onChange?.(v);
-        return 'end';     // bleibt auf "end" stehen — weitere Klicks überschreiben
-      });
+        onChangeRef.current?.(v);
+      }
     });
 
     return () => { map.remove(); mapRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [mode]);
 
   // Marker bei value-Änderung neu zeichnen
   useEffect(() => {
@@ -88,7 +92,6 @@ export default function MapPicker({ mode = 'start_end', value, onChange, default
     const v = value || {};
     const m = markersRef.current;
 
-    // Entfernen
     if (m.start)  { map.removeLayer(m.start);  m.start  = null; }
     if (m.end)    { map.removeLayer(m.end);    m.end    = null; }
     if (m.single) { map.removeLayer(m.single); m.single = null; }
@@ -101,7 +104,7 @@ export default function MapPicker({ mode = 'start_end', value, onChange, default
         m.single = L.marker([v.lat, v.lng], { icon: PIN_SINGLE, draggable: true })
           .on('dragend', (e) => {
             const ll = e.target.getLatLng();
-            onChange?.({ ...v, lat: round(ll.lat), lng: round(ll.lng) });
+            onChangeRef.current?.({ ...(valueRef.current || {}), lat: round(ll.lat), lng: round(ll.lng) });
           })
           .addTo(map);
         bounds.extend([v.lat, v.lng]);
@@ -111,7 +114,7 @@ export default function MapPicker({ mode = 'start_end', value, onChange, default
         m.start = L.marker([v.start_lat, v.start_lng], { icon: PIN_START, draggable: true })
           .on('dragend', e => {
             const ll = e.target.getLatLng();
-            onChange?.({ ...v, start_lat: round(ll.lat), start_lng: round(ll.lng) });
+            onChangeRef.current?.({ ...(valueRef.current || {}), start_lat: round(ll.lat), start_lng: round(ll.lng) });
           })
           .addTo(map);
         bounds.extend([v.start_lat, v.start_lng]);
@@ -120,7 +123,7 @@ export default function MapPicker({ mode = 'start_end', value, onChange, default
         m.end = L.marker([v.end_lat, v.end_lng], { icon: PIN_END, draggable: true })
           .on('dragend', e => {
             const ll = e.target.getLatLng();
-            onChange?.({ ...v, end_lat: round(ll.lat), end_lng: round(ll.lng) });
+            onChangeRef.current?.({ ...(valueRef.current || {}), end_lat: round(ll.lat), end_lng: round(ll.lng) });
           })
           .addTo(map);
         bounds.extend([v.end_lat, v.end_lng]);
@@ -136,9 +139,8 @@ export default function MapPicker({ mode = 'start_end', value, onChange, default
     if (bounds.isValid()) {
       map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
     }
-  }, [value, mode, onChange]);
+  }, [value, mode]);
 
-  // Geocoding via Nominatim (OSM)
   async function search() {
     if (!searchQ.trim()) return;
     setGeocoding(true);
@@ -191,16 +193,18 @@ export default function MapPicker({ mode = 'start_end', value, onChange, default
         <div className="px-3 py-2 flex flex-wrap gap-2 items-center border-b border-border text-xs">
           <button
             type="button"
-            className={'px-2.5 py-1 rounded-md font-semibold flex items-center gap-1.5 ' + (activeSlot === 'start' ? 'bg-success text-white' : 'bg-bg-3 text-text-dim hover:text-text')}
+            className={'px-2.5 py-1 rounded-md font-semibold flex items-center gap-1.5 ' + (activeSlot === 'start' ? 'text-white' : 'bg-bg-3 text-text-dim hover:text-text')}
+            style={activeSlot === 'start' ? { background: '#22c55e' } : {}}
             onClick={() => setActiveSlot('start')}
           >
-            <span className="inline-block w-4 h-4 rounded-full bg-success text-white text-[10px] flex items-center justify-center" style={{ background: '#22c55e' }}>A</span>
+            <span className="inline-block w-4 h-4 rounded-full text-white text-[10px] flex items-center justify-center" style={{ background: '#22c55e' }}>A</span>
             Start
             {hasStart && <span className="mono text-[10px] opacity-80 ml-1">✓</span>}
           </button>
           <button
             type="button"
-            className={'px-2.5 py-1 rounded-md font-semibold flex items-center gap-1.5 ' + (activeSlot === 'end' ? 'bg-danger text-white' : 'bg-bg-3 text-text-dim hover:text-text')}
+            className={'px-2.5 py-1 rounded-md font-semibold flex items-center gap-1.5 ' + (activeSlot === 'end' ? 'text-white' : 'bg-bg-3 text-text-dim hover:text-text')}
+            style={activeSlot === 'end' ? { background: '#ef4444' } : {}}
             onClick={() => setActiveSlot('end')}
           >
             <span className="inline-block w-4 h-4 rounded-full text-white text-[10px] flex items-center justify-center" style={{ background: '#ef4444' }}>B</span>
@@ -213,7 +217,9 @@ export default function MapPicker({ mode = 'start_end', value, onChange, default
             </button>
           )}
           <div className="basis-full text-text-faint">
-            {activeSlot === 'start' ? 'Klick auf die Karte → Startpunkt setzen' : 'Klick auf die Karte → Zielpunkt setzen'}
+            {activeSlot === 'start'
+              ? (hasStart ? 'Klick auf die Karte → Startpunkt verschieben' : 'Klick auf die Karte → Startpunkt setzen')
+              : (hasEnd   ? 'Klick auf die Karte → Zielpunkt verschieben'  : 'Klick auf die Karte → Zielpunkt setzen')}
             {' · Marker können gezogen werden'}
           </div>
         </div>
