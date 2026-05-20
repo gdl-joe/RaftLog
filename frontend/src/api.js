@@ -63,6 +63,7 @@ export const api = {
   // Photos
   listPhotos:(tripId)     => call('/photos?trip_id=' + encodeURIComponent(tripId)),
   deletePhoto:(id)        => call('/photos?id=' + encodeURIComponent(id), { method: 'DELETE' }),
+  setCover:  (tripId, photoId) => call('/trips?id=' + encodeURIComponent(tripId), { method: 'PATCH', body: JSON.stringify({ cover_photo_id: photoId }) }),
   uploadPhoto:async (tripId, file, caption = '') => {
     await ensureCsrf();
     const fd = new FormData();

@@ -159,6 +159,7 @@ CREATE TABLE IF NOT EXISTS `trips` (
   `carry_method`       VARCHAR(80),
 
   `hero_icon`      ENUM('river','lake','cave','portage','mixed') DEFAULT 'river',
+  `cover_photo_id` INT NULL COMMENT 'Optional: gewähltes Titelbild (sonst erstes Foto)',
   `is_public`      TINYINT(1) NOT NULL DEFAULT 0,
   `created_by`     INT NOT NULL,
   `created_at`     DATETIME DEFAULT CURRENT_TIMESTAMP,

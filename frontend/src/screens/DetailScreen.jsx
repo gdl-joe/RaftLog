@@ -34,9 +34,8 @@ export default function DetailScreen({ id, go, user }) {
 
   if (!trip) return <Loading label="Lade Befahrung…" />;
   const isAdmin = user?.role === 'admin';
-  const heroBg = trip.cover_photo
-    ? `url(${trip.cover_photo})`
-    : heroGradient(trip.trip_type);
+  const heroImage = trip.cover_photo_large || trip.cover_photo;
+  const heroGrad  = heroGradient(trip.trip_type);
 
   async function onUpload(e) {
     const files = Array.from(e.target.files || []);
@@ -66,9 +65,18 @@ export default function DetailScreen({ id, go, user }) {
   return (
     <>
       {/* HERO */}
-      <div className="relative -mx-4 lg:-mx-8 lg:rounded-none aspect-[16/9] lg:aspect-[21/9] bg-cover bg-center mb-5"
-           style={{ backgroundImage: heroBg }}>
-        <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/30 to-transparent" />
+      <div className="relative -mx-4 lg:-mx-8 lg:rounded-none aspect-[16/9] lg:aspect-[21/9] mb-5 overflow-hidden"
+           style={{ background: heroGrad }}>
+        {heroImage && (
+          <img
+            src={heroImage}
+            alt=""
+            className="absolute inset-0 w-full h-full object-contain"
+            style={{ background: '#0a1116' }}
+            loading="eager"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/30 to-transparent pointer-events-none" />
         <div className="absolute bottom-4 left-5 right-5 z-10 text-white">
           <div className="flex gap-2 items-center mb-2 flex-wrap">
             <Chip solid type={trip.trip_type}>
@@ -103,7 +111,7 @@ export default function DetailScreen({ id, go, user }) {
 
       {tab === 'info'   && <TabInfo trip={trip} />}
       {tab === 'map'    && <TabMap trip={trip} tracks={tracks} onUploadGpx={onUploadGpx} isAdmin={isAdmin} onUpdateTrip={setTrip} />}
-      {tab === 'photos' && <TabPhotos photos={photos} onOpen={setLightbox} onUpload={onUpload} uploading={uploading} isAdmin={isAdmin} fileRef={fileRef} />}
+      {tab === 'photos' && <TabPhotos photos={photos} onOpen={setLightbox} onUpload={onUpload} uploading={uploading} isAdmin={isAdmin} fileRef={fileRef} trip={trip} onUpdateTrip={setTrip} />}
       {tab === 'team'   && <TabTeam trip={trip} />}
 
       {lightbox >= 0 && photos && (
@@ -260,9 +268,21 @@ function TabMap({ trip, tracks, onUploadGpx, isAdmin, onUpdateTrip }) {
   );
 }
 
-function TabPhotos({ photos, onOpen, onUpload, uploading, isAdmin, fileRef }) {
+function TabPhotos({ photos, onOpen, onUpload, uploading, isAdmin, fileRef, trip, onUpdateTrip }) {
   if (!photos) return <Loading label="Lade Fotos…" />;
   const hasGps = photos.filter(p => p.gps_lat).length;
+  // Effektive Cover-ID: explizit gewählt oder erstes Foto in Liste
+  const coverId = trip.cover_photo_id ?? photos[0]?.id;
+
+  async function setCover(photoId) {
+    try {
+      const updated = await api.setCover(trip.id, photoId);
+      onUpdateTrip(updated);
+    } catch (e) {
+      alert('Fehler: ' + e.message);
+    }
+  }
+
   return (
     <div>
       <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
@@ -284,6 +304,12 @@ function TabPhotos({ photos, onOpen, onUpload, uploading, isAdmin, fileRef }) {
         </div>
       )}
 
+      {isAdmin && photos.length > 0 && (
+        <p className="text-xs text-text-dim mb-3">
+          Klick aufs Foto = Vollbild · Klick aufs <Icon.Star size={12} className="inline" />-Symbol = Als Titelbild setzen
+        </p>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 sm:gap-2 lg:gap-2.5">
         {isAdmin && (
           <button
@@ -295,26 +321,48 @@ function TabPhotos({ photos, onOpen, onUpload, uploading, isAdmin, fileRef }) {
             <span className="text-xs font-medium">Hochladen</span>
           </button>
         )}
-        {photos.map((p, i) => (
-          <button
-            type="button"
-            key={p.id}
-            className="relative aspect-square rounded-lg overflow-hidden border border-transparent hover:border-water transition-all cursor-zoom-in"
-            onClick={() => onOpen(i)}
-          >
-            <img
-              src={p.thumb_path || p.path}
-              loading="lazy"
-              alt={p.caption || ''}
-              className="w-full h-full object-cover"
-            />
-            {p.gps_lat && (
-              <span className="absolute top-1.5 right-1.5 bg-black/60 backdrop-blur-sm text-water-light rounded-md px-1.5 py-0.5 text-[0.6rem] inline-flex items-center gap-1">
-                <Icon.Pin size={10} /> GPS
-              </span>
-            )}
-          </button>
-        ))}
+        {photos.map((p, i) => {
+          const isCover = p.id === coverId;
+          return (
+            <div
+              key={p.id}
+              className={'relative aspect-square rounded-lg overflow-hidden border-2 transition-all group ' + (isCover ? 'border-water shadow-glow' : 'border-transparent hover:border-water')}
+            >
+              <button
+                type="button"
+                className="w-full h-full block cursor-zoom-in"
+                onClick={() => onOpen(i)}
+              >
+                <img
+                  src={p.thumb_path || p.path}
+                  loading="lazy"
+                  alt={p.caption || ''}
+                  className="w-full h-full object-cover"
+                />
+              </button>
+              {p.gps_lat && (
+                <span className="absolute top-1.5 right-1.5 bg-black/60 backdrop-blur-sm text-water-light rounded-md px-1.5 py-0.5 text-[0.6rem] inline-flex items-center gap-1 pointer-events-none">
+                  <Icon.Pin size={10} /> GPS
+                </span>
+              )}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setCover(p.id); }}
+                  title={isCover ? 'Aktuelles Titelbild' : 'Als Titelbild setzen'}
+                  className={'absolute top-1.5 left-1.5 rounded-md p-1 backdrop-blur-sm transition-all ' + (isCover ? 'bg-water text-white' : 'bg-black/60 text-white opacity-0 group-hover:opacity-100 hover:bg-water')}
+                >
+                  <Icon.Star size={14} />
+                </button>
+              )}
+              {isCover && (
+                <span className="absolute bottom-1.5 left-1.5 bg-water text-white text-[0.6rem] font-semibold px-1.5 py-0.5 rounded-md uppercase tracking-wider pointer-events-none">
+                  Titelbild
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

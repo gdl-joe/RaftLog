@@ -117,7 +117,7 @@ if ($method === 'PATCH' && $id) {
         'ww_grade','water_level','put_in_lat','put_in_lng','take_out_lat','take_out_lng',
         'wind_beaufort','waves','wet','rope',
         'portage_distance_m','carry_method',
-        'hero_icon','is_public',
+        'hero_icon','cover_photo_id','is_public',
     ];
     $set = []; $vals = [];
     foreach ($cols as $c) if (array_key_exists($c, $b)) { $set[] = "$c=?"; $vals[] = $b[$c]; }
@@ -162,11 +162,20 @@ function enrichTrip(array $t, PDO $db, bool $detailed = false): array
     $t['difficulty'] = ['t' => (int)$t['diff_t'], 'k' => (int)$t['diff_k'], 'p' => (int)$t['diff_p']];
     $t['photos']     = (int)($t['photo_count'] ?? 0);
 
-    // Erstes Foto als Cover
-    $p = $db->prepare('SELECT thumb_path, path FROM photos WHERE trip_id = ? ORDER BY sort_order, id LIMIT 1');
-    $p->execute([$t['id']]);
-    $photo = $p->fetch();
-    $t['cover_photo'] = $photo ? ($photo['thumb_path'] ?? $photo['path']) : null;
+    // Cover-Foto bestimmen: explizit gewähltes (cover_photo_id) oder das erste
+    $photo = null;
+    if (!empty($t['cover_photo_id'])) {
+        $p = $db->prepare('SELECT thumb_path, path, large_path FROM photos WHERE id = ? AND trip_id = ?');
+        $p->execute([$t['cover_photo_id'], $t['id']]);
+        $photo = $p->fetch() ?: null;
+    }
+    if (!$photo) {
+        $p = $db->prepare('SELECT thumb_path, path, large_path FROM photos WHERE trip_id = ? ORDER BY sort_order, id LIMIT 1');
+        $p->execute([$t['id']]);
+        $photo = $p->fetch() ?: null;
+    }
+    $t['cover_photo']       = $photo ? ($photo['thumb_path'] ?? $photo['path']) : null;
+    $t['cover_photo_large'] = $photo ? ($photo['large_path'] ?? $photo['path']) : null;
 
     if ($detailed) {
         $tm = $db->prepare('SELECT member_name FROM trip_team WHERE trip_id = ?');
