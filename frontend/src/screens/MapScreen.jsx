@@ -3,9 +3,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { api } from '../api.js';
 import { Loading } from '../atoms.jsx';
-import { Icon, TripTypeIcon } from '../icons.jsx';
+import { TripTypeIcon } from '../icons.jsx';
 
-const TILE_KEY = '';
 const OSM = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 export default function MapScreen({ go }) {
@@ -18,22 +17,29 @@ export default function MapScreen({ go }) {
     api.listTrips({ limit: 200 }).then(r => setTrips(r.items));
   }, []);
 
+  // Map immer initialisieren — unabhängig von Trips
   useEffect(() => {
     if (!mapEl.current || mapRef.current) return;
     const map = L.map(mapEl.current);
     mapRef.current = map;
     L.tileLayer(OSM, { attribution: '© OpenStreetMap', maxZoom: 18 }).addTo(map);
     map.setView([51.3, 9.5], 6);
-    // Container-Größe nach Mount neu berechnen
     setTimeout(() => map.invalidateSize(), 50);
     setTimeout(() => map.invalidateSize(), 300);
     return () => { map.remove(); mapRef.current = null; };
   }, []);
 
+  // Marker rendern wenn Trips/Filter ändert
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !trips) return;
-    map.eachLayer(l => { if (!l._url) map.removeLayer(l); });
+
+    // Nur Marker und Polylines entfernen, Tile-Layer behalten
+    map.eachLayer(l => {
+      if (l instanceof L.Marker || l instanceof L.Polyline) {
+        map.removeLayer(l);
+      }
+    });
 
     const bounds = L.latLngBounds([]);
     const filtered = filterType ? trips.filter(t => t.trip_type === filterType) : trips;
@@ -57,27 +63,43 @@ export default function MapScreen({ go }) {
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
   }, [trips, filterType, go]);
 
-  if (!trips) return <Loading />;
+  const tripCount = trips?.length || 0;
+  const withGps   = trips?.filter(t => t.put_in_lat).length || 0;
 
   return (
     <div>
-      <div className="filter-bar mb-3">
-        {['', 'river', 'lake', 'cave', 'portage'].map(t => (
-          <button key={t} className={'filter-chip ' + (filterType === t ? 'active' : '')} onClick={() => setFilterType(t)}>
-            {t === '' ? 'Alle' : (
-              <>
-                <TripTypeIcon type={t} size={14} style={{ color: colorFor(t) }} />
-                {{ river: 'Fluss', lake: 'See', cave: 'Höhle', portage: 'Portage' }[t]}
-              </>
-            )}
-          </button>
-        ))}
+      <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
+        <div className="filter-bar !mb-0">
+          {['', 'river', 'lake', 'cave', 'portage'].map(t => (
+            <button key={t} className={'filter-chip ' + (filterType === t ? 'active' : '')} onClick={() => setFilterType(t)}>
+              {t === '' ? 'Alle' : (
+                <>
+                  <TripTypeIcon type={t} size={14} style={{ color: colorFor(t) }} />
+                  {{ river: 'Fluss', lake: 'See', cave: 'Höhle', portage: 'Portage' }[t]}
+                </>
+              )}
+            </button>
+          ))}
+        </div>
+        {trips && (
+          <span className="text-xs text-text-dim mono">
+            {withGps} von {tripCount} mit Karten-Punkt
+          </span>
+        )}
       </div>
-      <div
-        ref={mapEl}
-        className="rounded-xl overflow-hidden border border-border"
-        style={{ height: 'min(75vh, 700px)', minHeight: 400 }}
-      />
+
+      <div className="relative">
+        <div
+          ref={mapEl}
+          className="rounded-xl overflow-hidden border border-border"
+          style={{ height: 'min(75vh, 700px)', minHeight: 400 }}
+        />
+        {!trips && (
+          <div className="absolute inset-0 flex items-center justify-center bg-bg/70 backdrop-blur-sm rounded-xl pointer-events-none">
+            <Loading label="Lade Befahrungen…" />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
