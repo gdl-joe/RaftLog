@@ -389,5 +389,16 @@ button { -webkit-tap-highlight-color: transparent; }
   display: inline-block;
 }
 
-/* Leaflet override */
-.leaflet-container { background: var(--c-bg) !important; }
+/* Leaflet overrides */
+.leaflet-container {
+  background: var(--c-bg) !important;
+  height: 100%;
+  width: 100%;
+  z-index: 1;
+}
+.leaflet-control-attribution {
+  background: rgba(14,24,32,.8) !important;
+  color: var(--c-text-dim) !important;
+  font-size: 10px !important;
+}
+.leaflet-control-attribution a { color: var(--c-water-light) !important; }

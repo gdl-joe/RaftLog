@@ -33,6 +33,11 @@ export default function MapyMap({ trip, tracks = [] }) {
         : '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
 
+    // Wenn der Container vorher nicht sichtbar war (Tab-Wechsel), kennt Leaflet
+    // die Größe noch nicht — kurz nach Mount neu berechnen
+    setTimeout(() => map.invalidateSize(), 50);
+    setTimeout(() => map.invalidateSize(), 300);
+
     return () => { map.remove(); mapRef.current = null; };
   }, []);
 

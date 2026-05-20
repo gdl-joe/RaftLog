@@ -60,6 +60,10 @@ export default function MapPicker({ mode = 'start_end', value, onChange, default
 
     map.setView(defaultCenter, defaultZoom);
 
+    // Container-Größe nach Mount neu berechnen (für Tab-Wechsel-Szenarien)
+    setTimeout(() => map.invalidateSize(), 50);
+    setTimeout(() => map.invalidateSize(), 300);
+
     map.on('click', (e) => {
       const { lat, lng } = e.latlng;
       const v = { ...(valueRef.current || {}) };
