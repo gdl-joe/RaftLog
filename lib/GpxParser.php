@@ -7,36 +7,52 @@ class GpxParser
      * Parst eine GPX-Datei in eine vereinfachte Punkt-Liste und berechnet
      * Distanz, Dauer, Höhenmeter und Bounding-Box.
      *
+     * Robust gegenüber verschiedenen GPX-Namespaces (Garmin, Komoot, Strava, OSM).
+     * Erkennt trkpt (Track-Punkte), rtept (Route-Punkte), wpt (Waypoints) als Fallback.
+     *
      * @param string $path  Pfad zur GPX-Datei
-     * @param int    $maxPoints  Maximale Punkte (Reduzierung via simpler Stride)
+     * @param int    $maxPoints  Maximale Punkte (Reduzierung via Stride)
      * @return array{points: array, distance_km: float, duration_s: int, ele_gain_m: int, bbox: array}
+     * @throws \RuntimeException
      */
     public static function parse(string $path, int $maxPoints = 2000): array
     {
-        $xml = @simplexml_load_file($path);
+        if (!file_exists($path)) {
+            throw new \RuntimeException('GPX-Datei nicht gefunden');
+        }
+        if (!extension_loaded('simplexml')) {
+            throw new \RuntimeException('PHP-Extension simplexml fehlt');
+        }
+
+        $raw = @file_get_contents($path);
+        if ($raw === false || $raw === '') {
+            throw new \RuntimeException('GPX-Datei ist leer oder nicht lesbar');
+        }
+
+        // BOM entfernen
+        $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
+
+        // Robuster Parse-Versuch: alle Namespaces vor dem Parsen entfernen,
+        // damit XPath ohne Namespace-Präfix funktioniert.
+        // Das ist tolerant gegenüber Garmin (Namespace 1/1), Komoot (1/1), Strava, etc.
+        $stripped = preg_replace('/xmlns(?::[a-zA-Z0-9]+)?\s*=\s*"[^"]*"/', '', $raw);
+
+        libxml_use_internal_errors(true);
+        $xml = simplexml_load_string($stripped);
         if (!$xml) {
-            throw new \RuntimeException('GPX konnte nicht geparst werden');
+            $errors = libxml_get_errors();
+            libxml_clear_errors();
+            $msg = $errors ? trim($errors[0]->message) : 'unbekannt';
+            throw new \RuntimeException('XML-Parsing fehlgeschlagen: ' . $msg);
         }
 
-        // GPX hat Namespace — registrieren für XPath-Suche
-        $ns = $xml->getNamespaces(true);
-        $defaultNs = $ns[''] ?? null;
-        if ($defaultNs) {
-            $xml->registerXPathNamespace('g', $defaultNs);
-            $trkpts = $xml->xpath('//g:trkpt');
-        } else {
-            $trkpts = $xml->xpath('//trkpt');
-        }
+        // Suche zuerst nach trkpt, dann rtept, dann wpt als Fallback
+        $trkpts = $xml->xpath('//trkpt');
+        if (!$trkpts) $trkpts = $xml->xpath('//rtept');
+        if (!$trkpts) $trkpts = $xml->xpath('//wpt');
 
-        if (!$trkpts) {
-            // Routen oder Waypoints fallback
-            $trkpts = $defaultNs
-                ? $xml->xpath('//g:rtept')
-                : $xml->xpath('//rtept');
-        }
-
-        if (!$trkpts) {
-            throw new \RuntimeException('Keine Trackpunkte in GPX gefunden');
+        if (!$trkpts || count($trkpts) === 0) {
+            throw new \RuntimeException('Keine Track-, Route- oder Waypoints in GPX gefunden');
         }
 
         $points = [];
@@ -45,10 +61,10 @@ class GpxParser
             $lat = isset($attrs['lat']) ? (float)$attrs['lat'] : null;
             $lng = isset($attrs['lon']) ? (float)$attrs['lon'] : null;
             if ($lat === null || $lng === null) continue;
+            if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) continue;
 
-            $children = $defaultNs ? $pt->children($defaultNs) : $pt->children();
-            $ele = isset($children->ele) ? (float)$children->ele : null;
-            $t   = isset($children->time) ? (string)$children->time : null;
+            $ele = isset($pt->ele) ? (float)$pt->ele : null;
+            $t   = isset($pt->time) ? (string)$pt->time : null;
 
             $points[] = [
                 'lat' => round($lat, 6),
@@ -58,21 +74,24 @@ class GpxParser
             ];
         }
 
-        // Optionale Reduzierung
+        if (count($points) === 0) {
+            throw new \RuntimeException('Keine gültigen Koordinaten in GPX');
+        }
+
+        // Optionale Reduzierung (Decimation)
         if (count($points) > $maxPoints) {
             $stride = (int)ceil(count($points) / $maxPoints);
             $reduced = [];
             for ($i = 0; $i < count($points); $i += $stride) {
                 $reduced[] = $points[$i];
             }
-            // Letzten Punkt immer behalten
             if (end($reduced) !== end($points)) {
                 $reduced[] = end($points);
             }
             $points = $reduced;
         }
 
-        // Distanz (Haversine, in km)
+        // Distanz (Haversine)
         $distanceKm = 0.0;
         for ($i = 1; $i < count($points); $i++) {
             $distanceKm += self::haversine(
@@ -81,15 +100,19 @@ class GpxParser
             );
         }
 
-        // Dauer (Sekunden zwischen erstem/letztem Timestamp)
+        // Dauer
         $durationS = 0;
         $firstT = $points[0]['t'] ?? null;
         $lastT  = end($points)['t'] ?? null;
         if ($firstT && $lastT) {
-            $durationS = max(0, strtotime($lastT) - strtotime($firstT));
+            $ts1 = strtotime($firstT);
+            $ts2 = strtotime($lastT);
+            if ($ts1 !== false && $ts2 !== false) {
+                $durationS = max(0, $ts2 - $ts1);
+            }
         }
 
-        // Höhenmeter (kumulierte positive Differenz)
+        // Höhenmeter
         $eleGain = 0;
         $lastEle = null;
         foreach ($points as $p) {

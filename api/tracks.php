@@ -41,15 +41,44 @@ if ($method === 'POST') {
         if (!$tripId) Response::error('trip_id fehlt');
 
         $file = $_FILES['gpx'];
-        if ($file['error'] !== UPLOAD_ERR_OK) Response::error('Upload-Fehler', 500);
-        if ($file['size'] > 20 * 1024 * 1024) Response::error('Max. 20 MB pro GPX');
 
-        $dir = $cfg['upload_dir'] . '/tracks/' . preg_replace('/[^a-z0-9\-]/', '', $tripId) . '/';
-        if (!is_dir($dir) && !mkdir($dir, 0755, true)) Response::error('Ordner-Erstellung fehlgeschlagen', 500);
+        // Detaillierte Fehlermeldung je nach PHP-Upload-Fehler
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            $msg = match ($file['error']) {
+                UPLOAD_ERR_INI_SIZE   => 'Datei ist größer als upload_max_filesize in PHP-Config',
+                UPLOAD_ERR_FORM_SIZE  => 'Datei ist größer als MAX_FILE_SIZE im Formular',
+                UPLOAD_ERR_PARTIAL    => 'Datei wurde nur teilweise hochgeladen',
+                UPLOAD_ERR_NO_FILE    => 'Keine Datei hochgeladen',
+                UPLOAD_ERR_NO_TMP_DIR => 'Kein temporäres Verzeichnis verfügbar',
+                UPLOAD_ERR_CANT_WRITE => 'Datei konnte nicht auf den Server geschrieben werden',
+                UPLOAD_ERR_EXTENSION  => 'PHP-Extension hat den Upload blockiert',
+                default => 'Unbekannter Upload-Fehler (Code ' . $file['error'] . ')',
+            };
+            Response::error($msg, 400);
+        }
+
+        if ($file['size'] > 20 * 1024 * 1024) Response::error('Max. 20 MB pro GPX');
+        if ($file['size'] === 0) Response::error('GPX-Datei ist leer');
+
+        // Trip-ID für Pfad bereinigen — auch t-2026-05-20-… ist OK
+        $safeTripId = preg_replace('/[^a-zA-Z0-9\-]/', '', $tripId);
+        if (!$safeTripId) Response::error('Ungültige trip_id');
+
+        $dir = rtrim($cfg['upload_dir'], '/') . '/tracks/' . $safeTripId . '/';
+        if (!is_dir($dir)) {
+            if (!@mkdir($dir, 0755, true) && !is_dir($dir)) {
+                Response::error('Track-Verzeichnis konnte nicht erstellt werden: ' . $dir, 500);
+            }
+        }
+        if (!is_writable($dir)) {
+            Response::error('Track-Verzeichnis ist nicht beschreibbar: ' . $dir, 500);
+        }
 
         $name = bin2hex(random_bytes(6)) . '.gpx';
         $dest = $dir . $name;
-        if (!move_uploaded_file($file['tmp_name'], $dest)) Response::error('Speichern fehlgeschlagen', 500);
+        if (!move_uploaded_file($file['tmp_name'], $dest)) {
+            Response::error('Datei konnte nicht gespeichert werden (move_uploaded_file)', 500);
+        }
 
         try {
             $parsed = GpxParser::parse($dest);
@@ -58,7 +87,7 @@ if ($method === 'POST') {
             Response::error('GPX-Parsing fehlgeschlagen: ' . $e->getMessage());
         }
 
-        $relPath = '/uploads/tracks/' . basename(dirname($dest)) . '/' . $name;
+        $relPath = '/uploads/tracks/' . $safeTripId . '/' . $name;
         $stmt = $db->prepare("
             INSERT INTO trip_tracks
             (trip_id, source, gpx_path, points_json, point_count, distance_km, duration_s,

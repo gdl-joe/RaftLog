@@ -3,6 +3,8 @@
 # Wenn auf einem Verzeichnis gelandet → public/index.html ausliefern
 DirectoryIndex public/index.html
 
+# PHP-Upload-Limits stehen in .user.ini (PHP läuft bei all-inkl als CGI)
+
 RewriteEngine On
 
 # Root-URL "/" explizit auf das gebaute Frontend mappen
