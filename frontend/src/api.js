@@ -22,15 +22,39 @@ async function call(path, opts = {}) {
   if (isMutate) {
     headers['X-CSRF-Token'] = await ensureCsrf();
   }
-  const r = await fetch(API + path, {
-    ...opts,
-    credentials: 'include',
-    headers,
-  });
+
+  // Timeout per AbortController — länger für Uploads (FormData), kurz für GET
+  const timeoutMs = opts.timeoutMs ?? (isFormData ? 90_000 : 20_000);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+
+  let r;
+  try {
+    r = await fetch(API + path, {
+      ...opts,
+      credentials: 'include',
+      headers,
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') {
+      throw new Error(`Timeout nach ${timeoutMs / 1000} s — Server antwortet nicht`);
+    }
+    throw new Error('Netzwerk-Fehler: ' + e.message);
+  }
+  clearTimeout(timer);
+
   if (r.status === 204) return null;
-  const j = await r.json().catch(() => ({}));
+
+  // Bei nicht-JSON-Response (z.B. HTML-Fehlerseite) sprechende Meldung
+  const text = await r.text();
+  let j = {};
+  try { j = text ? JSON.parse(text) : {}; }
+  catch { j = { error: text.slice(0, 200) }; }
+
   if (!r.ok) {
-    const err = new Error(j.error || 'Netzwerkfehler');
+    const err = new Error(j.error || `HTTP ${r.status}`);
     err.status = r.status;
     throw err;
   }

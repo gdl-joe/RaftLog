@@ -1,6 +1,10 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 
+// Harte Limits: bei großen Bildern nicht durchhängen
+@set_time_limit(60);
+@ini_set('memory_limit', '256M');
+
 Auth::requireAdmin();
 Auth::verifyCsrf();
 
