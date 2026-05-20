@@ -3,134 +3,90 @@ Zuletzt aktualisiert: 2026-05-20
 
 ## Was wurde gemacht
 
-### Session 1 — Konzept + Design (heute)
-- Brainstorming, Vorgabe-Recherche (CaveLog, Camperstop), Trip-Typen, Schwierigkeitsmodell geklärt
-- `PLAN.md` — Stack, Verzeichnis, DB-Schema, API-Endpoints, Screens, Schritt-Reihenfolge
-- `DESIGN.md` — Design-Tokens, Wasser-Petrol-Palette, Component-Specs, Responsive-Strategie
-- `mockups/` — gerenderte HTML-Mockups für Feed, Detail, Fotos, Neu, Gewässer mit Sandbox-Schalter (Mobile/Tablet/Desktop × Dark/Light)
-- Mockups durch Jochen freigegeben
+### Session 1 — Konzept + Design
+- Brainstorming, Vorgabe-Recherche (CaveLog, Camperstop)
+- `PLAN.md`, `DESIGN.md` — Stack, Schema, API, Screens, Tokens
+- `mockups/` — gerenderte HTML-Mockups mit Viewport-/Theme-Switcher
 
-### Session 2 — Implementierung (heute)
+### Session 2 — Implementierung
+- Backend komplett (PHP/MySQL): Schema (11 Tabellen), Lib (Auth/Database/Response/GpxParser), 12 API-Endpoints
+- Frontend komplett (Vite + React + Tailwind, PWA): App-Shell mit Sidebar (Desktop) und Bottom-Nav (Mobile), 9 Screens, MapyMap + PhotoLightbox
+- Build-Pipeline läuft
 
-**Backend komplett (PHP/MySQL):**
-- `database/schema.sql` — 11 Tabellen (users, sessions, rivers, lakes, caves, portages, trips, trip_team, trip_gear, trip_hazards, trip_tracks, photos)
-- `lib/` — Database (PDO), Auth (Sessions+CSRF), Response (JSON), GpxParser (Haversine + Vereinfachung)
-- `api/` — 12 Endpoints: auth · waters (Router) · rivers · lakes · caves · portages · trips · tracks · upload · photos · stats · users
-- `setup/create-admin.php` — einmaliges Setup
-- `.htaccess` (Root, uploads, config), Upload-PHP-Sperre
+### Session 3 — Deployment auf all-inkl
+- Subdomain `raft.js25.de` eingerichtet, PHP 8.5, MySQL-DB angelegt
+- `.htaccess` mehrfach gefixt: `DirectoryMatch` → `RewriteRule` (in .htaccess nicht erlaubt), `[L]` → `[END]`, `DirectoryIndex public/index.html`, explizite Root-Rule
+- Document-Root-Pfad korrigiert (war anfangs falsch gesetzt)
+- Setup-Skript via Inkognito ausgeführt (Service-Worker blockierte normale Navigation)
+- Admin angelegt, erstes Login funktioniert
+- `setup/` ist (sollte) gelöscht (sein) — bitte verifizieren
 
-**Frontend komplett (Vite + React + Tailwind):**
-- `frontend/` — package.json, vite.config.js (PWA-Plugin, mapy.cz-Cache), tailwind+postcss
-- `src/index.css` — Design-Tokens als CSS-Variablen, App-Shell-Grid (Mobile→Desktop), Component-Klassen
-- `src/api.js` — Fetch-Wrapper mit CSRF, Parallel-Upload-Pool
-- `src/icons.jsx` — Lucide-Style Inline-SVG-Icons
-- `src/atoms.jsx` — TripCard, Chip, DiffBars, Rating, FilterChip, Loading, EmptyState
-- `src/App.jsx` — Sidebar (Desktop) + Bottom-Nav (Mobile), 9 Screen-Routing
-- `src/screens/` — Login, Feed, Detail (4 Tabs), New (4-Schritt-Wizard), EditTrip, Map, Waters, Stats, Profile
-- `src/components/` — MapyMap (Leaflet mit mapy.cz/OSM-Fallback), PhotoLightbox
+### Session 4 — Karten-Picker + GitHub (heute)
+- **MapPicker-Komponente** neu: Leaflet-basiert, mit Geocoding (Nominatim), Geolocation-Button, draggable Markern, zwei Modi (`single` / `start_end`)
+- **NewScreen** Schritt 2: Beim Anlegen eines neuen Gewässers Karten-Picker für Position (See/Höhle: single, Portage: start_end)
+- **NewScreen** Schritt 3: Beim Fluss-Trip Karten-Picker für Ein-/Ausstieg (put_in/take_out)
+- **EditTripScreen**: Karten-Picker für Fluss-Koordinaten nachträglich
+- Build erfolgreich: 49 Module, 364 KB JS, 41 KB CSS, PWA-Manifest
+- **GitHub-Repo veröffentlicht**: https://github.com/gdl-joe/RaftLog (public, MIT)
+- `.gitignore` robuster: ignoriert komplette Build-Artefakte aus `public/`
+- `README.md`, `LICENSE` (MIT), `DEPLOYMENT.md` ergänzt
+- Initial-Commit auf `main`-Branch
 
-**Build-Test bestanden:** `npm run build` → 48 Module, 355 KB JS (107 KB gzip), 40 KB CSS, PWA mit Service-Worker generiert.
-
-## Dateistruktur (Stand jetzt)
-
-```
-RaftLog/
-├─ PLAN.md
-├─ DESIGN.md
-├─ SESSION_STATUS.md
-├─ .htaccess           ← PHP 8.2, SPA-Routing, API-Routing, Schutz
-├─ .gitignore
-├─ api/                ← 12 PHP-Endpoints
-├─ lib/                ← Auth, Database, Response, GpxParser
-├─ config/
-│  ├─ config.example.php
-│  └─ config.php       ← lokal angelegt, NICHT committen
-├─ database/
-│  └─ schema.sql       ← noch zu importieren!
-├─ uploads/            ← Foto-Storage (trips/, tracks/)
-├─ setup/
-│  └─ create-admin.php ← einmal aufrufen, dann LÖSCHEN
-├─ frontend/
-│  ├─ index.html
-│  ├─ vite.config.js
-│  ├─ tailwind.config.js
-│  ├─ package.json
-│  └─ src/             ← Alle Screens + Komponenten
-├─ public/             ← Build-Output (vite build), auch von .htaccess als SPA-Root genutzt
-└─ mockups/            ← Designvorschau (kann später gelöscht werden)
-```
-
-## Aktueller Stand — wo wir stehen
+## Aktueller Stand
 
 | Bereich | Status |
 |---------|--------|
-| Backend-API | ✅ vollständig |
-| Datenbank-Schema | ✅ geschrieben, **noch nicht importiert** |
-| Frontend-Code | ✅ vollständig (alle 9 Screens) |
-| Build-Pipeline | ✅ läuft sauber durch (Vite + PWA) |
-| `config.php` | ✅ lokal angelegt (Default localhost/root/leer) — DB-Daten eintragen! |
-| Mapy.cz-Key | ❌ noch nicht eingetragen — Fallback auf OSM funktioniert |
-| Admin-User | ❌ noch nicht angelegt — `/setup/create-admin.php` |
-| Erste Daten | ❌ keine |
-| PWA-PNG-Icons | ⚠️ aktuell SVG-Manifest. Für richtigen PWA-Install evtl. später PNG-Icons (192 + 512) erzeugen |
+| Backend-API | ✅ läuft auf raft.js25.de |
+| DB-Schema | ✅ importiert, 11 Tabellen |
+| Frontend | ✅ deployt, Login funktioniert |
+| Karten-Picker | ✅ implementiert (NewScreen + EditTripScreen) — **noch nicht deployt** |
+| GPX-Upload | ✅ Backend fertig, Detail-Tab "Karte & Track" → "GPX hochladen" |
+| Foto-Upload | ✅ parallel mit 3 Workers |
+| GitHub-Repo | ✅ public unter [gdl-joe/RaftLog](https://github.com/gdl-joe/RaftLog) |
+| Mapy.cz-Key | ❌ noch nicht eingetragen (OSM-Fallback aktiv) |
 
-## Einrichtung (Checkliste — lokal mit Herd)
+## Was Jochen jetzt tun muss
 
-1. **MySQL-Datenbank anlegen** (lokal in Herd/phpMyAdmin):
-   ```sql
-   CREATE DATABASE raftlog CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   ```
-2. **DB-Zugang in `config/config.php` eintragen** (DB-Name, User, Pass)
-3. **Schema importieren:**
-   ```bash
-   mysql -u root raftlog < database/schema.sql
-   ```
-4. **Domain in Herd** (raftlog.test) auf `/Users/Jochen/Sites/localhost/RaftLog` zeigen
-5. **Frontend-Dev-Server starten:**
-   ```bash
-   cd frontend && npm run dev
-   # läuft auf http://localhost:5173, API-Calls werden zu raftlog.test proxiert
-   ```
-6. **Admin anlegen:** http://raftlog.test/setup/create-admin.php
-7. **`setup/`-Verzeichnis löschen** nach Admin-Anlage
-8. **Mapy.cz-Key besorgen** (kostenlos auf developer.mapy.cz) und entweder
-   - in `config/config.php` unter `mapy_key` eintragen ODER
-   - direkt in `frontend/index.html` als `<meta name="mapy-key" content="…">`
-9. **Erste Befahrung anlegen** über `/?new=1`
+1. **Neuen Build hochladen** — die neue `public/`-Version mit Karten-Picker:
+   - `public/assets/index-DC9-qYCP.js` (neu)
+   - `public/assets/index-locR5EgZ.css` (neu)
+   - `public/index.html` (neu)
+   - `public/sw.js` (neu)
+   - **Alte Hash-Files in `public/assets/` löschen** (saubere Variante)
+2. **Browser-Cache leeren** auf raft.js25.de:
+   - F12 → Application → Service Workers → Unregister
+   - Application → Storage → Clear site data
+   - Reload mit `Cmd+Shift+R`
+3. **Karten-Picker testen**:
+   - Neue Befahrung "Fluss" anlegen → Schritt 3: Karte erscheint, Klick setzt Punkt A (Einstieg), nächster Klick Punkt B (Ausstieg)
+   - Detail-Tab "Karte & Track" zeigt die Punkte
+4. **Optional**: mapy.cz-Key besorgen ([developer.mapy.cz](https://developer.mapy.cz)) und in `<meta name="mapy-key">` in `public/index.html` eintragen
 
-## Produktion (all-inkl.com)
+## GitHub-Workflow ab jetzt
 
 ```bash
-# 1. Frontend bauen
-cd frontend && npm run build      # erzeugt ../public/
+# Änderungen committen
+cd /Users/Jochen/Sites/localhost/RaftLog
+git add .
+git commit -m "Aussagekräftige Beschreibung"
+git push
 
-# 2. Upload nach all-inkl ~/html/raftlog/:
-#    api/, lib/, config/ (mit echter config.php), uploads/, setup/, public/, .htaccess
-#    NICHT hochladen: frontend/, mockups/, .git/, node_modules/
-
-# 3. DB-Setup via phpMyAdmin: schema.sql importieren
-# 4. config.php auf KAS-Werte anpassen
-# 5. /setup/create-admin.php aufrufen
-# 6. setup/ löschen
-# 7. PHP 8.2 in KAS aktivieren
-# 8. HTTPS aktivieren, dann in .htaccess die RewriteRule für HTTPS einkommentieren
-# 9. CORS in config.php auf eigene Domain einschränken (allowed_origins)
+# Neue Features
+git checkout -b feature/xyz
+# … arbeiten …
+git push -u origin feature/xyz
+# Dann PR auf GitHub erstellen
 ```
 
-## Nächste Schritte
+## Nächste Schritte (Backlog)
 
-### Sofort (Setup)
-1. DB anlegen + Schema importieren
-2. `config.php` mit Zugangsdaten füllen
-3. Admin anlegen, setup/ löschen
-4. Frontend starten, einloggen, ersten Trip anlegen
-
-### Optional (später)
-- Mapy.cz-Key besorgen und eintragen
-- PNG-Icons 192/512 generieren (z.B. mit Online-SVG→PNG-Konverter oder Sharp-Skript)
-- Live-Tracking-UI im NewScreen (Backend ist fertig)
-- Drag & Drop page-weite Drop-Zone für Foto-Upload
+- Live-Tracking-UI im NewScreen (Backend ist fertig: POST `/api/tracks` mit `source=live`)
+- Drag-&-Drop-Foto-Zone (page-weit)
+- mapy.cz-Key einbauen
+- Map-Vorschau in WatersScreen-Cards (jetzt wo Gewässer Koordinaten haben)
+- PDF/Markdown-Export für einzelne Trips
+- Pegelonline-Integration für DE-Flüsse
 
 ## Offene Probleme / Blockaden
 
-Keine. Build läuft, Backend ist syntaktisch sauber. Erste Schritt: DB-Einrichtung.
+Keine.
