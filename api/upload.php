@@ -17,32 +17,76 @@ if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
 }
 
 $file = $_FILES['photo'] ?? null;
-if (!$file || $file['error'] !== UPLOAD_ERR_OK) Response::error('Datei-Upload fehlgeschlagen');
+if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
+    $msg = $file ? match($file['error']) {
+        UPLOAD_ERR_INI_SIZE  => 'Datei zu groß (PHP-Limit)',
+        UPLOAD_ERR_PARTIAL   => 'Upload abgebrochen',
+        UPLOAD_ERR_NO_FILE   => 'Keine Datei',
+        default              => 'Upload-Fehler Code ' . $file['error'],
+    } : 'Keine Datei empfangen';
+    Response::error($msg);
+}
 
-$allowedMime = ['image/jpeg', 'image/png', 'image/heic', 'image/heif'];
+$allowedMime = ['image/jpeg', 'image/png', 'image/heic', 'image/heif', 'image/webp'];
 $finfo = new finfo(FILEINFO_MIME_TYPE);
 $mime = $finfo->file($file['tmp_name']);
-if (!in_array($mime, $allowedMime, true)) Response::error('Nur JPEG, PNG und HEIC erlaubt');
+if (!in_array($mime, $allowedMime, true)) Response::error('Nicht unterstütztes Format: ' . $mime);
 
 $maxBytes = $cfg['max_upload_mb'] * 1024 * 1024;
 if ($file['size'] > $maxBytes) Response::error("Maximale Dateigröße: {$cfg['max_upload_mb']} MB");
 
+// HEIC/HEIF braucht Imagick — wenn nicht verfügbar, abweisen mit Hinweis
+$isHeic = in_array($mime, ['image/heic', 'image/heif'], true);
+if ($isHeic && !extension_loaded('imagick')) {
+    Response::error('HEIC/HEIF wird vom Server nicht unterstützt. Bitte das Foto vor dem Upload als JPEG exportieren (am iPhone: Einstellungen → Kamera → Formate → Maximale Kompatibilität).');
+}
+
 $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-$ext = $ext === 'png' ? 'png' : 'jpg';
+$ext = match (true) {
+    $mime === 'image/png'  => 'png',
+    $mime === 'image/webp' => 'webp',
+    default => 'jpg',
+};
 $name = bin2hex(random_bytes(8)) . '.' . $ext;
 $dest = $uploadDir . $name;
 
 if (!move_uploaded_file($file['tmp_name'], $dest)) Response::error('Speichern fehlgeschlagen', 500);
 
+// HEIC → JPEG konvertieren via Imagick (Original wird ersetzt)
+if ($isHeic) {
+    try {
+        $im = new Imagick($dest);
+        $im->setImageFormat('jpeg');
+        $im->setImageCompressionQuality(90);
+        $jpgDest = preg_replace('/\.\w+$/', '.jpg', $dest);
+        $im->writeImage($jpgDest);
+        $im->clear();
+        @unlink($dest);
+        $dest = $jpgDest;
+        $name = basename($dest);
+        $ext  = 'jpg';
+        $mime = 'image/jpeg';
+    } catch (\Throwable $e) {
+        @unlink($dest);
+        Response::error('HEIC-Konvertierung fehlgeschlagen: ' . $e->getMessage());
+    }
+}
+
 $thumbPath = $uploadDir . 'thumb_' . $name;
 $largePath = $uploadDir . 'large_' . $name;
-$thumbRel = $largeRel = null;
+$relPath   = '/uploads/trips/' . basename($uploadDir) . '/' . $name;
+$thumbRel  = null;
+$largeRel  = null;
 $width = $height = null;
 
+// Resize-Versuch — wenn was schiefgeht, nutzen wir das Original als Thumb/Large
+$resizeOk = false;
 if (extension_loaded('gd')) {
+    @ini_set('memory_limit', '256M');
     $src = match ($mime) {
         'image/jpeg' => @imagecreatefromjpeg($dest),
         'image/png'  => @imagecreatefrompng($dest),
+        'image/webp' => @imagecreatefromwebp($dest),
         default      => false,
     };
     if ($src) {
@@ -55,8 +99,13 @@ if (extension_loaded('gd')) {
             $largeRel = '/uploads/trips/' . basename($uploadDir) . '/large_' . $name;
         }
         imagedestroy($src);
+        $resizeOk = true;
     }
 }
+
+// Fallback: Original-Datei als Thumb und Large verwenden, damit immer was angezeigt wird
+if (!$thumbRel) $thumbRel = $relPath;
+if (!$largeRel) $largeRel = $relPath;
 
 // EXIF auslesen — Datum und GPS
 $takenAt = null;
@@ -78,7 +127,6 @@ if (in_array($mime, ['image/jpeg', 'image/heic', 'image/heif'], true) && functio
 }
 
 $db = Database::get();
-$relPath = '/uploads/trips/' . basename($uploadDir) . '/' . $name;
 $stmt = $db->prepare("
     INSERT INTO photos (trip_id, path, thumb_path, large_path, caption, taken_at,
                         gps_lat, gps_lng, width, height, sort_order)
@@ -104,19 +152,22 @@ Response::json([
 
 function makeThumb($src, int $w, int $h, int $maxSize, string $dest): bool
 {
-    if ($w <= $maxSize && $h <= $maxSize) {
-        // Original ist klein genug, einfach JPEG kopieren
-        imagejpeg($src, $dest, 88);
-        return true;
+    try {
+        if ($w <= $maxSize && $h <= $maxSize) {
+            return @imagejpeg($src, $dest, 88);
+        }
+        $ratio = min($maxSize / $w, $maxSize / $h);
+        $nw = max(1, (int)($w * $ratio));
+        $nh = max(1, (int)($h * $ratio));
+        $thumb = imagecreatetruecolor($nw, $nh);
+        if (!$thumb) return false;
+        imagecopyresampled($thumb, $src, 0, 0, 0, 0, $nw, $nh, $w, $h);
+        $ok = @imagejpeg($thumb, $dest, 88);
+        imagedestroy($thumb);
+        return (bool)$ok;
+    } catch (\Throwable $e) {
+        return false;
     }
-    $ratio = min($maxSize / $w, $maxSize / $h);
-    $nw = (int)($w * $ratio);
-    $nh = (int)($h * $ratio);
-    $thumb = imagecreatetruecolor($nw, $nh);
-    imagecopyresampled($thumb, $src, 0, 0, 0, 0, $nw, $nh, $w, $h);
-    imagejpeg($thumb, $dest, 88);
-    imagedestroy($thumb);
-    return true;
 }
 
 function exifToDecimal(array $coord, string $hemi): float

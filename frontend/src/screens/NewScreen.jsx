@@ -60,10 +60,15 @@ export default function NewScreen({ go, user }) {
 
       if (files.length) {
         setUploadProgress({ done: 0, total: files.length });
-        await uploadPhotosParallel(trip.id, files, {
+        const results = await uploadPhotosParallel(trip.id, files, {
           concurrency: 3,
           onProgress: (done, total) => setUploadProgress({ done, total }),
         });
+        const errs = results.filter(r => !r.ok);
+        if (errs.length) {
+          const msg = errs.map(e => `• ${e.file.name}: ${e.error}`).join('\n');
+          alert(`${errs.length} von ${files.length} Foto(s) sind fehlgeschlagen:\n\n${msg}\n\nDie Befahrung wurde trotzdem gespeichert.`);
+        }
       }
       setSavedTripId(trip.id);
     } catch (e) {

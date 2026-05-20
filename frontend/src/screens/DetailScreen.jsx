@@ -40,14 +40,21 @@ export default function DetailScreen({ id, go, user }) {
   async function onUpload(e) {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    setUploading({ done: 0, total: files.length });
-    await uploadPhotosParallel(id, files, {
+    setUploading({ done: 0, total: files.length, errors: [] });
+    const results = await uploadPhotosParallel(id, files, {
       concurrency: 3,
-      onProgress: (done, total) => setUploading({ done, total }),
+      onProgress: (done, total) => setUploading(u => ({ ...u, done, total })),
     });
+    const errors = results.filter(r => !r.ok);
     setUploading(null);
+    if (errors.length) {
+      const msg = errors.map(e => `• ${e.file.name}: ${e.error}`).join('\n');
+      alert(`${errors.length} von ${files.length} Foto(s) sind fehlgeschlagen:\n\n${msg}`);
+    }
     const fresh = await api.listPhotos(id);
     setPhotos(fresh);
+    // input zurücksetzen, damit dieselbe Datei nochmal gewählt werden kann
+    if (e.target) e.target.value = '';
   }
 
   async function onUploadGpx(e) {
