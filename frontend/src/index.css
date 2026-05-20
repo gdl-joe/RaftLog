@@ -396,6 +396,19 @@ button { -webkit-tap-highlight-color: transparent; }
   width: 100%;
   z-index: 1;
 }
+/* Tailwind Preflight setzt img { max-width: 100%; height: auto } — das killt
+   Leaflet's absolut positionierte Tiles. Zurücksetzen für alles innerhalb der Map. */
+.leaflet-container img,
+.leaflet-tile-pane img,
+.leaflet-marker-pane img,
+.leaflet-shadow-pane img,
+.leaflet-overlay-pane img,
+.leaflet-tile {
+  max-width: none !important;
+  max-height: none !important;
+  width: auto !important;
+  height: auto !important;
+}
 .leaflet-control-attribution {
   background: rgba(14,24,32,.8) !important;
   color: var(--c-text-dim) !important;
